@@ -24,7 +24,7 @@ intro_title
 	ld bc,0
 	ld de,title_screen_txt
 	call printstring	
-	ld de, $09
+	ld e, 9
 
 scroll_loop
 	ld b, e				; row set for PRINTAT

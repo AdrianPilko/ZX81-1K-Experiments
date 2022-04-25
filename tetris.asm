@@ -31,11 +31,21 @@ intro_title
 	
 	
 ;; initialise "variables" and memory
-
+shapes      ; base shape stored in upright positions, as they start at top, 2column * 4 rows to make logic easier
+            ; e.g. normal L is  10  rev L  01  square 11  T  01  4inrow 01
+            ;                   10         01         11     11         01  
+            ;                   10         01         00     01         01
+            ;                   11         11         00     00         01
+    DEFB  1,1,1,1,0,0,0,0    ; square
+    DEFB  1,0,1,0,1,0,1,1    ; normal L
+    DEFB  0,1,0,1,0,1,1,1    ; reverse L
+    DEFB  0,1,1,1,0,1,0,0    ; T
+    DEFB  0,1,0,1,0,1,0,1    ; 4 in row
 ;; main game loop
-
+main
 ;; generate shape
-
+   ; 5 shapes supported: 4 block square, normal L, reverse L, T shape, 4 in row
+   ld hl, (shape) 
 ;; user input to retate shape
 
 ;; scroll shapes down
@@ -47,7 +57,7 @@ intro_title
 ;; detect if game over condition met, it collision between shape entering at top
 
 
-	jp intro_title   ; never return to basic, new game always starts from title screen
+	jp main   ; never return to basic, new game always starts from title screen
 		
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
 printstring

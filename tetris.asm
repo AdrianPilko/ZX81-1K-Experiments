@@ -12,7 +12,8 @@
 #include "zx81sys.asm"
 #include "line1.asm"
 
-	jp intro_title		; jump to print title text
+#define SHAPE_CHAR   128        ; black square
+	jp intro_title		        ; jump to print title text
 	
 
 ;; the underscore characters here are mapped onto real zx81 
@@ -20,6 +21,8 @@
 ;; shortcuts, than decimal equivalent 
 title_screen_txt
 	DEFB	_Z,_X,_8,_1,__,_1,_K,__,_T,_E,_T,_R,_I,_S,$ff
+currentShape    
+    DEFB 0
 
 ;; intro screen
 intro_title
@@ -36,16 +39,68 @@ shapes      ; base shape stored in upright positions, as they start at top, 2col
             ;                   10         01         11     11         01  
             ;                   10         01         00     01         01
             ;                   11         11         00     00         01
-    DEFB  1,1,1,1,0,0,0,0    ; square
-    DEFB  1,0,1,0,1,0,1,1    ; normal L
-    DEFB  0,1,0,1,0,1,1,1    ; reverse L
-    DEFB  0,1,1,1,0,1,0,0    ; T
-    DEFB  0,1,0,1,0,1,0,1    ; 4 in row
-;; main game loop
+;    DEFB  1,1,1,1,0,0,0,0       ; square
+;    DEFB  1,0,1,0,1,0,1,1       ; normal L
+;    DEFB  0,1,0,1,0,1,1,1       ; reverse L
+;    DEFB  0,1,1,1,0,1,0,0       ; T
+;    DEFB  0,1,0,1,0,1,0,1       ; 4 in row
+; alternative shape definition (bit packed)
+   DEFB %11110000,%10101011,%01010111,%01110100,%01010101 
+;
+;
+    
+shape_row_index     ; the current row of the top of the falling shape
+    DEFB 0
+shape_col_index     ; the current column of the top left of the falling shape
+    DEFB 0
+ 
+    ;; main game loop
 main
-;; generate shape
-   ; 5 shapes supported: 4 block square, normal L, reverse L, T shape, 4 in row
-   ld hl, (shape) 
+    ;; generate shape   
+
+    ;generate a random number between 0 and 4 
+    call random              
+    ld hl, shapes
+    ld bc, 0
+    ld b, a
+    add hl, bc                           ; add the random (1 to 4) offset to hl to get value of shape
+    ld (currentShape), hl
+    ; draw shape at top    
+    ld hl, (DF_CC)
+    ld de, 19                           ; add offset to top of screen memory to skip title
+;; this will only draw shape at top need to add current position offset
+    add hl, de                          ; to where we want to draw shape
+    ld c, %10000000                     ; mask for shape (initialised, but will be rotated  )
+    ld e, 4
+drawShapeOuter    
+    ld b, 2                             ; b now stores max length of definition of shape (i.e. 1 byte)
+drawShapeInner
+    ld a, (currentShape)
+    and c                               ; set to block or no block based on (shapes)     
+    jp nz, noDraw
+    ld (hl), SHAPE_CHAR
+noDraw    
+    inc hl
+    rr c                                ; rotate mask to right by one bit
+    djnz drawShapeInner                 ; dnjz decrements b and jumps if not zero
+    ld a, 15
+    push af
+    add hl, sp                          ; gets current screen position to next row
+    pop af
+    dec e
+    ld a, 0
+    cp e    
+    jp z, drawShapeOuter
+
+      
+   ;draw shape moving down the screen
+dropLoop    
+    ;;; TODO
+    jp dropLoop
+   ;calculate the position in screen memory, starts off D_FILE + 16 (for first line of game screen)
+   ; each row is +10 
+   
+   
 ;; user input to retate shape
 
 ;; scroll shapes down
@@ -73,6 +128,23 @@ printstring_loop
 	jr printstring_loop
 printstring_end	
 	ret
+
+random 
+	ld hl,(FRAMES)
+random_seed 
+	ld de,0
+	add hl,de
+	dec hl
+	ld a,h
+	and $04                 ; this is the instruction that forces number 0 to 4 inclusive
+	ld h,a
+	ld (random_seed+1),hl
+	ld a,(hl)
+foundRandom 
+	sub b
+	jr nc,foundRandom
+	adc a,b                 ; register a contains the random number
+	ret 	    
 
 #include "line2.asm"
 #include "screenTetris.asm"      			; definition of the screen memory, in colapsed version for 1K        

@@ -31,7 +31,7 @@ intro_title
 	ld bc,0                     ; printstring from offset from DF__CC stored in bc
 	ld de,title_screen_txt      ; load text into de for printstring
 	call printstring	
-	
+	jp main
 	
 ;; initialise "variables" and memory
 shapes      ; base shape stored in upright positions, as they start at top, 2column * 4 rows to make logic easier
@@ -57,9 +57,10 @@ shape_col_index     ; the current column of the top left of the falling shape
     ;; main game loop
 main
     ;; generate shape   
-
+    
     ;generate a random number between 0 and 4 
-    call random              
+    jp random             ; BUG - never returns?????             
+afterRandom
     ld hl, shapes
     ld bc, 0
     ld b, a
@@ -67,7 +68,7 @@ main
     ld (currentShape), hl
     ; draw shape at top    
     ld hl, (DF_CC)
-    ld de, 19                           ; add offset to top of screen memory to skip title
+    ld de, 18                           ; add offset to top of screen memory to skip title
 ;; this will only draw shape at top need to add current position offset
     add hl, de                          ; to where we want to draw shape
     ld c, %10000000                     ; mask for shape (initialised, but will be rotated  )
@@ -77,22 +78,31 @@ drawShapeOuter
 drawShapeInner
     ld a, (currentShape)
     and c                               ; set to block or no block based on (shapes)     
-    jp nz, noDraw
+    jp z, noDraw
     ld (hl), SHAPE_CHAR
 noDraw    
     inc hl
     rr c                                ; rotate mask to right by one bit
     djnz drawShapeInner                 ; dnjz decrements b and jumps if not zero
-    ld a, 15
+    ld a, 16
     push af
     add hl, sp                          ; gets current screen position to next row
     pop af
     dec e
     ld a, 0
-    cp e    
+    cp e  
     jp z, drawShapeOuter
 
-      
+
+    ; debug
+    ;ld hl, (DF_CC)
+    ;ld bc, 19
+    ;add hl, bc
+    ;ld a, SHAPE_CHAR
+    ;ld (hl), a
+
+
+    
    ;draw shape moving down the screen
 dropLoop    
     ;;; TODO
@@ -130,13 +140,15 @@ printstring_end
 	ret
 
 random 
+    ld a,1
+    jp afterRandom              ; debug to work out what's wrong with random not returning
 	ld hl,(FRAMES)
 random_seed 
 	ld de,0
 	add hl,de
 	dec hl
 	ld a,h
-	and $04                 ; this is the instruction that forces number 0 to 4 inclusive
+	and $1f                 ; this is the instruction that forces number 0 to 4 inclusive
 	ld h,a
 	ld (random_seed+1),hl
 	ld a,(hl)
@@ -144,7 +156,8 @@ foundRandom
 	sub b
 	jr nc,foundRandom
 	adc a,b                 ; register a contains the random number
-	ret 	    
+	jp afterRandom 	    
+    
 
 #include "line2.asm"
 #include "screenTetris.asm"      			; definition of the screen memory, in colapsed version for 1K        

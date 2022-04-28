@@ -45,7 +45,7 @@ shapes      ; base shape stored in upright positions, as they start at top, 2col
 ;    DEFB  0,1,1,1,0,1,0,0       ; T
 ;    DEFB  0,1,0,1,0,1,0,1       ; 4 in row
 ; alternative shape definition (bit packed)
-   DEFB %11110000,%10101011,%01010111,%01110100,%01010101 
+   DEFB %00111100,%00101011,%00010111,%00011101,%00010101 
 ;
 ;
     
@@ -55,23 +55,41 @@ shape_col_index     ; the current column of the top left of the falling shape
     DEFB 0
 outerCount  
     DEFB 0,0
+currentShapeOffset    
+    DEFB 0
  
     ;; main game loop
 main
+    ld a, 13
+    ld (shape_row_index),a
     ;; generate shape   
     
     ;generate a random number between 0 and 4 
-    ;jp random             ; BUG - never returns?????             
-    ld a, 0
-afterRandom
+    ;ld de, 0
+    ;ld bc, 0
+    ;ld hl, 0
+    ;ld a, 0 
+    ;xor a
+    ;call random             ; BUG - never returns?????                 
+    and $03
+    ld a, r
+    and $03
+    ld (currentShapeOffset), a
+dropLoop        
+    ld a, (shape_row_index)
+    add a, 10
+    ld (shape_row_index), a
+    
+    ld a, (currentShapeOffset)
     ld hl, shapes
-    ld bc, 0
-    ld b, a
-    add hl, bc                           ; add the random (1 to 4) offset to hl to get value of shape
-    ld (currentShape), hl
-    ; draw shape at top    
+    ld d, 0                            
+    ld e, a                            ; add the random (0 to 3) offset to hl to get value of shape
+    add hl, de
+    ld a, (hl)    
+    ld (currentShape), a
+    ; draw shape at next row    
     ld hl, (DF_CC)
-    ld de, 13                           ; add offset to top of screen memory to skip title
+    ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
 ;; this will only draw shape at top need to add current position offset
     add hl, de                          ; to where we want to draw shape
     ld c, %10000000                     ; mask for shape (initialised, but will be rotated  )
@@ -79,11 +97,14 @@ afterRandom
 drawShapeOuter    
     ld b, 2                             ; b now stores max length of definition of shape (i.e. 1 byte)
 drawShapeInner
-    ld a, (currentShape)
+    ld a, (currentShape)    
     and c                               ; set to block or no block based on (shapes)     
-    jp nz, noDraw
-    ld (hl), SHAPE_CHAR
-noDraw    
+    jp z, drawSpace
+    ld (hl), SHAPE_CHAR    
+    jr carryOn
+drawSpace    
+    ld (hl), 0
+carryOn
     inc hl
     xor a
     ld a, c    
@@ -99,20 +120,19 @@ noDraw
     cp 0  
     jp nz, drawShapeOuter
 
-
-    ; debug
-    ;ld hl, (DF_CC)
-    ;ld bc, 19
-    ;add hl, bc
-    ;ld a, SHAPE_CHAR
-    ;ld (hl), a
-
-
+	ld bc, $05ff
+waitloop
+	dec bc
+	ld a,b
+	or c
+	jr nz, waitloop
     
    ;draw shape moving down the screen
-dropLoop    
+    
     ;;; TODO
-    jp dropLoop
+    ld a, (shape_row_index)
+    cp 213                           ; this code will have to change to take into acount highest shape
+    jp nz, dropLoop
    ;calculate the position in screen memory, starts off D_FILE + 16 (for first line of game screen)
    ; each row is +10 
    
@@ -129,7 +149,25 @@ dropLoop
 
 
 	jp main   ; never return to basic, new game always starts from title screen
-		
+
+
+random 
+	ld hl,(FRAMES)
+random_seed 
+	ld de,0
+	add hl,de
+	dec hl
+	ld a,h
+	and $03
+	ld h,a
+	ld (random_seed+1),hl
+	ld a,(hl)
+foundRandom 
+	sub b
+	jr nc,foundRandom
+	adc a,b
+	ret
+    
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
 printstring
 	ld hl,(DF_CC)
@@ -143,25 +181,7 @@ printstring_loop
 	inc de
 	jr printstring_loop
 printstring_end	
-	ret
-
-random 
-	ld hl,(FRAMES)
-random_seed 
-	ld de,0
-	add hl,de
-	dec hl
-	ld a,h
-	and $1f                 ; this is the instruction that forces number 0 to 4 inclusive
-	ld h,a
-	ld (random_seed+1),hl
-	ld a,(hl)
-foundRandom 
-	sub b
-	jr nc,foundRandom
-	adc a,b                 ; register a contains the random number
-	jp afterRandom 	    
-    
+	ret  
 
 #include "line2.asm"
 #include "screenTetris.asm"      			; definition of the screen memory, in colapsed version for 1K        

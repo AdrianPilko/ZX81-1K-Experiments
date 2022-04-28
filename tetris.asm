@@ -20,7 +20,7 @@
 ;; characters in charcodes.asm, they are more human readble 
 ;; shortcuts, than decimal equivalent 
 title_screen_txt
-	DEFB	_Z,_X,_8,_1,__,_1,_K,__,_T,_E,_T,_R,_I,_S,$ff
+	DEFB	__,_T,_E,_T,_R,_I,_S,$ff
 currentShape    
     DEFB 0
 
@@ -53,13 +53,16 @@ shape_row_index     ; the current row of the top of the falling shape
     DEFB 0
 shape_col_index     ; the current column of the top left of the falling shape
     DEFB 0
+outerCount  
+    DEFB 0,0
  
     ;; main game loop
 main
     ;; generate shape   
     
     ;generate a random number between 0 and 4 
-    jp random             ; BUG - never returns?????             
+    ;jp random             ; BUG - never returns?????             
+    ld a, 0
 afterRandom
     ld hl, shapes
     ld bc, 0
@@ -68,7 +71,7 @@ afterRandom
     ld (currentShape), hl
     ; draw shape at top    
     ld hl, (DF_CC)
-    ld de, 18                           ; add offset to top of screen memory to skip title
+    ld de, 13                           ; add offset to top of screen memory to skip title
 ;; this will only draw shape at top need to add current position offset
     add hl, de                          ; to where we want to draw shape
     ld c, %10000000                     ; mask for shape (initialised, but will be rotated  )
@@ -78,20 +81,23 @@ drawShapeOuter
 drawShapeInner
     ld a, (currentShape)
     and c                               ; set to block or no block based on (shapes)     
-    jp z, noDraw
+    jp nz, noDraw
     ld (hl), SHAPE_CHAR
 noDraw    
     inc hl
-    rr c                                ; rotate mask to right by one bit
+    xor a
+    ld a, c    
+    rra                                 ; rotate mask to right by one bit
+    ld c, a
     djnz drawShapeInner                 ; dnjz decrements b and jumps if not zero
-    ld a, 16
-    push af
-    add hl, sp                          ; gets current screen position to next row
-    pop af
-    dec e
-    ld a, 0
-    cp e  
-    jp z, drawShapeOuter
+    ld (outerCount), de                 ; store loop count temp
+    ld de, 8    
+    add hl, de                          ; gets current screen position to next row
+    ld de, (outerCount)                 ; retreive  loop count temp
+    dec e   
+    ld a, e
+    cp 0  
+    jp nz, drawShapeOuter
 
 
     ; debug
@@ -140,8 +146,6 @@ printstring_end
 	ret
 
 random 
-    ld a,1
-    jp afterRandom              ; debug to work out what's wrong with random not returning
 	ld hl,(FRAMES)
 random_seed 
 	ld de,0

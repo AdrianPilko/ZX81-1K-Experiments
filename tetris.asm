@@ -35,16 +35,11 @@ intro_title
 	
 ;; initialise "variables" and memory
 shapes      ; base shape stored in upright positions, as they start at top, 2column * 4 rows to make logic easier
-            ; e.g. normal L is  10  rev L  01  square 11  T  01  4inrow 01
-            ;                   10         01         11     11         01  
-            ;                   10         01         00     01         01
-            ;                   11         11         00     00         01
-;    DEFB  1,1,1,1,0,0,0,0       ; square
-;    DEFB  1,0,1,0,1,0,1,1       ; normal L
-;    DEFB  0,1,0,1,0,1,1,1       ; reverse L
-;    DEFB  0,1,1,1,0,1,0,0       ; T
-;    DEFB  0,1,0,1,0,1,0,1       ; 4 in row
-; alternative shape definition (bit packed)
+            ; e.g. normal L is  00  rev L  00  square 00  T  00  4inrow 00
+            ;                   10         01         11     01         01  
+            ;                   10         01         11     11         01
+            ;                   11         11         00     01         01
+; shape definition (bit packed)
    DEFB %00111100,%00101011,%00010111,%00011101,%00010101 
 ;
 ;
@@ -62,18 +57,9 @@ currentShapeOffset
 main
     ld a, 13
     ld (shape_row_index),a
-    ;; generate shape   
-    
-    ;generate a random number between 0 and 4 
-    ;ld de, 0
-    ;ld bc, 0
-    ;ld hl, 0
-    ;ld a, 0 
-    ;xor a
-    ;call random             ; BUG - never returns?????                 
-    and $03
+    ;; generate shape       
     ld a, r
-    and $03
+    and %00000011
     ld (currentShapeOffset), a
 dropLoop        
     ld a, (shape_row_index)
@@ -127,19 +113,11 @@ waitloop
 	or c
 	jr nz, waitloop
     
-   ;draw shape moving down the screen
-    
-    ;;; TODO
     ld a, (shape_row_index)
     cp 213                           ; this code will have to change to take into acount highest shape
     jp nz, dropLoop
-   ;calculate the position in screen memory, starts off D_FILE + 16 (for first line of game screen)
-   ; each row is +10 
    
-   
-;; user input to retate shape
-
-;; scroll shapes down
+;; user input to rotate shape
 
 ;; detect if line(s) has/have been completed and remove, and drop remaining down
 

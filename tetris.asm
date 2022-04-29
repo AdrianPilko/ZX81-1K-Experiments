@@ -12,9 +12,17 @@
 #include "zx81sys.asm"
 #include "line1.asm"
 
+; keyboard port for shift key to v
+#define KEYBOARD_READ_PORT_SHIFT_TO_V $FE
+; keyboard space to b
+#define KEYBOARD_READ_PORT_SPACE_TO_B $7F 
+; starting port numbner for keyboard, is same as first port for shift to v
+#define KEYBOARD_READ_PORT $FE 
+
 #define SHAPE_CHAR   128        ; black square
 	jp intro_title		        ; jump to print title text
 	
+;; initialise "variables" and memory
 
 ;; the underscore characters here are mapped onto real zx81 
 ;; characters in charcodes.asm, they are more human readble 
@@ -23,17 +31,6 @@ title_screen_txt
 	DEFB	__,_T,_E,_T,_R,_I,_S,$ff
 currentShape    
     DEFB 0
-
-;; intro screen
-intro_title
-	; no need for clear screen as screenTetris.asm has already set 
-    ; everything to zero    
-	ld bc,0                     ; printstring from offset from DF__CC stored in bc
-	ld de,title_screen_txt      ; load text into de for printstring
-	call printstring	
-	jp main
-	
-;; initialise "variables" and memory
 shapes      ; base shape stored in upright positions, as they start at top, 2column * 4 rows to make logic easier
             ; e.g. normal L is  00  rev L  00  square 00  T  00  4inrow 00
             ;                   10         01         11     01         01  
@@ -52,19 +49,77 @@ outerCount
     DEFB 0,0
 currentShapeOffset    
     DEFB 0
- 
+shapeTrackLeftRight
+    DEFB 0    
+;; intro screen
+intro_title
+	; no need for clear screen as screenTetris.asm has already set 
+    ; everything to zero    
+	ld bc,0                     ; printstring from offset from DF__CC stored in bc
+	ld de,title_screen_txt      ; load text into de for printstring
+	call printstring	
+	jp initialiseVariables
+	
+initialiseVariables
+    ld a, 5
+    ld (shapeTrackLeftRight),a 
     ;; main game loop
 main
+
     ld a, 13
     ld (shape_row_index),a
     ;; generate shape       
     ld a, r
     and %00000011
     ld (currentShapeOffset), a
-dropLoop        
+
+dropLoop  
+   
+    ; read the keyboard input and adust the offset     
+	ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
+	in a, (KEYBOARD_READ_PORT)					; read from io port	
+	bit 1, a
+	; check bit set for key press left  (Z)
+	jp z, shapeLeft								; jump to move shape left
+	ld a, KEYBOARD_READ_PORT_SPACE_TO_B			; read keyboard space to B
+	in a, (KEYBOARD_READ_PORT)					; read from io port		
+	bit 2, a									; check bit set for key press right (M)
+	jr z, shapeRight							; jump to move shape right	
+	jp noShapeMove								; dropped through to no move
+shapeLeft
+    ld a, (shapeTrackLeftRight)
+    cp 2
+    jp z, noShapeMove 
+    dec a
+    ld (shapeTrackLeftRight),a 
+    
     ld a, (shape_row_index)
-    add a, 10
+    inc a                  
     ld (shape_row_index), a
+    
+	jp afterNoShapeMove	
+shapeRight
+    ld a, (shapeTrackLeftRight)
+    cp 7
+    jp z, noShapeMove 
+    inc a
+    ld (shapeTrackLeftRight),a 
+    
+    ld a, (shape_row_index)
+    dec a     
+    ld (shape_row_index), a
+    
+    jp afterNoShapeMove
+    
+noShapeMove	
+      
+    
+    
+afterNoShapeMove
+    ld a, (shape_row_index)
+    add a, 10                  ; always need ten as the offset, the left right just adds bit to this   
+    ld (shape_row_index), a
+
     
     ld a, (currentShapeOffset)
     ld hl, shapes
@@ -106,7 +161,7 @@ carryOn
     cp 0  
     jp nz, drawShapeOuter
 
-	ld bc, $05ff
+	ld bc, $0fff
 waitloop
 	dec bc
 	ld a,b
@@ -127,25 +182,7 @@ waitloop
 
 
 	jp main   ; never return to basic, new game always starts from title screen
-
-
-random 
-	ld hl,(FRAMES)
-random_seed 
-	ld de,0
-	add hl,de
-	dec hl
-	ld a,h
-	and $03
-	ld h,a
-	ld (random_seed+1),hl
-	ld a,(hl)
-foundRandom 
-	sub b
-	jr nc,foundRandom
-	adc a,b
-	ret
-    
+   
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
 printstring
 	ld hl,(DF_CC)

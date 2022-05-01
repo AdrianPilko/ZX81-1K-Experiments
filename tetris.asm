@@ -37,7 +37,7 @@ shapes      ; base shape stored in upright positions, as they start at top, 2col
             ;                   10         01         11     11         01
             ;                   11         11         00     01         01
 ; shape definition (bit packed)
-   DEFB %00111100,%00101011,%00010111,%00011101,%00010101 
+   DEFB %00001111,%10101011,%01010111,%00011101,%01010101 
 ;
 ;
     
@@ -53,6 +53,8 @@ shapeTrackLeftRight
     DEFB 0    
 shape_row
     DEFB 0
+bottomLevels    
+    DEFB 19,19,19,19,19,19,19,19
 ;; intro screen
 intro_title
 	; no need for clear screen as screenTetris.asm has already set 
@@ -60,13 +62,22 @@ intro_title
 	ld bc,1                     ; printstring from offset from DF__CC stored in bc
 	ld de,title_screen_txt      ; load text into de for printstring
 	call printstring	
-	jp initialiseVariables
-	
+    
+    ; clear the play area (is need for all after first game as play area will be filled with previous blocks
+    
+		
 initialiseVariables
     ld a, 5
     ld (shapeTrackLeftRight),a 
     ld a, 1
     ld (shape_row),a    
+    ld b, 7
+initBottom    
+    ;ld a, 19
+    ld hl, bottomLevels
+    ld (hl), 19
+    djnz initBottom
+    
     ;; main game loop
 main
     ld a, 1
@@ -178,7 +189,7 @@ drawShapeInner
     ld (hl), SHAPE_CHAR    
     jr carryOn
 drawSpace    
-    ld (hl), 0
+    ;ld (hl), 0                         ; commented out now as we don't want to overrite characters anymore (we delete shape differnetly above)
 carryOn
     inc hl
     xor a
@@ -201,13 +212,31 @@ waitloop
 	ld a,b
 	or c
 	jr nz, waitloop
-    
+       
     ld a, (shape_row)
     inc a
-    ld (shape_row),a
-    cp 19                           ; this code will have to change to take into acount highest shape
+    ld (shape_row),a    
+    ld bc, (bottomLevels)       ; for some reason ld b, (bottomLevels) then cp b doesn't work?? needs ld bc...
+    cp c                         ; this code will have to change to take into acount highest shape
                                      ; and will need to handle the left right moves
     jp nz, dropLoop
+    
+    ;; check and update the bottom levels which effectively stores the current height in each column
+    
+    ;ld e, (shapeTrackLeftRight)        
+    ;ld d, 0
+    ld hl, bottomLevels            ; we need to change bottomLevels based on what shape it was!?? (later dudes)
+    ;add hl,de                       ; index into bottomLevels
+    ld a, (hl)
+    dec a                           ; this will eventually be decrement by the vertical size of shape
+    cp 3
+    ld (hl), a
+    jp z, gameOver            
+                 ; compare bottom level to top row the start drawing, if it is there then game over
+                                    ; TODO  needs to account for size of next shape may need todo this just after shape selected
+    
+
+    ; for now just decrement
 ;; user input to rotate shape
 
 ;; detect if line(s) has/have been completed and remove, and drop remaining down
@@ -218,7 +247,17 @@ waitloop
 
 
 	jp main   ; never return to basic, new game always starts from title screen
-   
+    
+gameOver
+  	ld bc, $ffff
+waitloopRetryGame
+	dec bc
+	ld a,b
+	or c
+	jr nz, waitloopRetryGame  
+    jp intro_title
+    
+    
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
 printstring
 	ld hl,(DF_CC)

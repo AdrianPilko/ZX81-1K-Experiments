@@ -29,10 +29,14 @@
 ;; shortcuts, than decimal equivalent 
 title_screen_txt
 	DEFB	_T,_E,_T,_R,_I,_S,$ff
+game_over_txt1
+	DEFB	_G,_A,_M,_E,$ff    
+game_over_txt2
+    DEFB	_O,_V,_E,_R,$ff    
 currentShape    
     DEFB 0
 shapes      ; base shape stored in upright positions, as they start at top, 2column * 4 rows to make logic easier
-            ; e.g. normal L is  00  rev L  00  square 00  T  00  4inrow 00
+            ; e.g. normal L is  10  rev L  01  square 00  T  00  4inrow 01
             ;                   10         01         11     01         01  
             ;                   10         01         11     11         01
             ;                   11         11         00     01         01
@@ -55,6 +59,9 @@ shape_row
     DEFB 0
 bottomLevels    
     DEFB 19,19,19,19,19,19,19,19
+initScreenIndex
+    DEFB 0
+        
 ;; intro screen
 intro_title
 	; no need for clear screen as screenTetris.asm has already set 
@@ -63,8 +70,31 @@ intro_title
 	ld de,title_screen_txt      ; load text into de for printstring
 	call printstring	
     
-    ; clear the play area (is need for all after first game as play area will be filled with previous blocks
+    ; commented out as not working yet
     
+    ; clear the play area (is need for all after first game as play area will be filled with previous blocks
+;    ld b, 21
+;    ld a, 2
+;    ld (initScreenIndex), a 
+;    ld hl, (DF_CC)
+;preClearPlayArea    
+;    ld e, 0
+;clearPlayArea        
+;    ld c, a
+;    add hl, bc
+;    ld (hl), 0
+;    inc e
+;    ld a,(initScreenIndex)
+;    inc a    
+;    ld (initScreenIndex), a 
+;    ld a, 7
+;    cp e
+;    jp nz, clearPlayArea
+;    
+;    ld (initScreenIndex), a     ; need the extra addition to get past the new line character and left wall
+;    add a, 3    
+;    ld (initScreenIndex), a 
+;    djnz clearPlayArea
 		
 initialiseVariables
     ld a, 5
@@ -206,7 +236,7 @@ carryOn
     cp 0  
     jp nz, drawShapeOuter
 
-	ld bc, $0fff
+	ld bc, $08ff
 waitloop
 	dec bc
 	ld a,b
@@ -247,8 +277,16 @@ waitloop
 
 
 	jp main   ; never return to basic, new game always starts from title screen
-    
+
+
+
 gameOver
+    ld bc,22
+    ld de,game_over_txt1    
+    call printstring	    
+    ld bc,32
+    ld de,game_over_txt2
+    call printstring	
   	ld bc, $ffff
 waitloopRetryGame
 	dec bc

@@ -28,7 +28,7 @@
 ;; characters in charcodes.asm, they are more human readble 
 ;; shortcuts, than decimal equivalent 
 title_screen_txt
-	DEFB	__,_T,_E,_T,_R,_I,_S,$ff
+	DEFB	_T,_E,_T,_R,_I,_S,$ff
 currentShape    
     DEFB 0
 shapes      ; base shape stored in upright positions, as they start at top, 2column * 4 rows to make logic easier
@@ -51,11 +51,13 @@ currentShapeOffset
     DEFB 0
 shapeTrackLeftRight
     DEFB 0    
+shape_row
+    DEFB 0
 ;; intro screen
 intro_title
 	; no need for clear screen as screenTetris.asm has already set 
     ; everything to zero    
-	ld bc,0                     ; printstring from offset from DF__CC stored in bc
+	ld bc,1                     ; printstring from offset from DF__CC stored in bc
 	ld de,title_screen_txt      ; load text into de for printstring
 	call printstring	
 	jp initialiseVariables
@@ -63,9 +65,15 @@ intro_title
 initialiseVariables
     ld a, 5
     ld (shapeTrackLeftRight),a 
+    ld a, 1
+    ld (shape_row),a    
     ;; main game loop
 main
-
+    ld a, 1
+    ld (shape_row),a
+    ld a, 5
+    ld (shapeTrackLeftRight),a 
+    
     ld a, 13
     ld (shape_row_index),a
     ;; generate shape       
@@ -80,46 +88,67 @@ dropLoop
 	in a, (KEYBOARD_READ_PORT)					; read from io port	
 	bit 1, a
 	; check bit set for key press left  (Z)
-	jp z, shapeLeft								; jump to move shape left
+	jp z, shapeRight								; jump to move shape left
 	ld a, KEYBOARD_READ_PORT_SPACE_TO_B			; read keyboard space to B
 	in a, (KEYBOARD_READ_PORT)					; read from io port		
 	bit 2, a									; check bit set for key press right (M)
-	jr z, shapeRight							; jump to move shape right	
+	jr z, shapeLeft							; jump to move shape right	
 	jp noShapeMove								; dropped through to no move
 shapeLeft
     ld a, (shapeTrackLeftRight)
-    cp 2
-    jp z, noShapeMove 
     dec a
+    cp 1
+    jp z, noShapeMove     
     ld (shapeTrackLeftRight),a 
-    
     ld a, (shape_row_index)
     inc a                  
     ld (shape_row_index), a
     
-	jp afterNoShapeMove	
+	jp noShapeMove	
 shapeRight
     ld a, (shapeTrackLeftRight)
-    cp 7
-    jp z, noShapeMove 
     inc a
+    cp 8
+    jp z, noShapeMove 
     ld (shapeTrackLeftRight),a 
     
     ld a, (shape_row_index)
     dec a     
-    ld (shape_row_index), a
-    
-    jp afterNoShapeMove
+    ld (shape_row_index), a 
+    jp noShapeMove
     
 noShapeMove	
-      
+   ; jp drawShape
     
     
-afterNoShapeMove
+;deleteOldShape
+;    ;before we add to shape row index we need to delete the current shape position
+;    ld a, (currentShapeOffset)
+;    ld hl, (DF_CC)
+;    ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
+;;; this will only draw shape at top need to add current position offset
+;    add hl, de                          ; to where we want to draw shape
+;    ld e, 4
+;deleteOldShapeLoopOuter    
+;    ld b, 2                             ; b now stores max length of definition of shape (i.e. 1 byte)
+;deleteOldShapeLoopInner
+;    ld (hl), 0
+;    inc hl
+;    djnz deleteOldShapeLoopInner                 ; dnjz decrements b and jumps if not zero
+;    ld (outerCount), de                 ; store loop count temp
+;    ld de, 8    
+;    add hl, de                          ; gets current screen position to next row
+;    ld de, (outerCount)                 ; retreive  loop count temp
+;    dec e   
+;    ld a, e
+;    cp 0  
+;    jp nz, deleteOldShapeLoopOuter
+   
+
+drawShape
     ld a, (shape_row_index)
     add a, 10                  ; always need ten as the offset, the left right just adds bit to this   
     ld (shape_row_index), a
-
     
     ld a, (currentShapeOffset)
     ld hl, shapes
@@ -168,10 +197,12 @@ waitloop
 	or c
 	jr nz, waitloop
     
-    ld a, (shape_row_index)
-    cp 213                           ; this code will have to change to take into acount highest shape
+    ld a, (shape_row)
+    inc a
+    ld (shape_row),a
+    cp 19                           ; this code will have to change to take into acount highest shape
+                                     ; and will need to handle the left right moves
     jp nz, dropLoop
-   
 ;; user input to rotate shape
 
 ;; detect if line(s) has/have been completed and remove, and drop remaining down

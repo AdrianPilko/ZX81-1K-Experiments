@@ -82,6 +82,36 @@ main
     ld (currentShapeOffset), a
 
 dropLoop  
+
+deleteOldShape
+    ;ld a, (shape_row_index)
+    ;add a, 10                  ; always need ten as the offset, the left right just adds bit to this   
+    ;ld (shape_row_index), a
+    
+    ;before we add to shape row index we need to delete the current shape position
+    ld a, (currentShapeOffset)
+    ld hl, (DF_CC)
+    ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
+;; this will only draw shape at top need to add current position offset
+    add hl, de                          ; to where we want to draw shape
+    ld e, 4
+deleteOldShapeLoopOuter    
+    ld b, 2                             ; b now stores max length of definition of shape (i.e. 1 byte)
+deleteOldShapeLoopInner
+    ld (hl), 0
+    inc hl
+    djnz deleteOldShapeLoopInner                 ; dnjz decrements b and jumps if not zero
+    ld (outerCount), de                 ; store loop count temp
+    ld de, 8    
+    add hl, de                          ; gets current screen position to next row
+    ld de, (outerCount)                 ; retreive  loop count temp
+    dec e   
+    ld a, e
+    cp 0  
+    jp nz, deleteOldShapeLoopOuter
+  
+
+
    
     ; read the keyboard input and adust the offset     
 	ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
@@ -118,33 +148,8 @@ shapeRight
     jp noShapeMove
     
 noShapeMove	
-   ; jp drawShape
+      
     
-    
-;deleteOldShape
-;    ;before we add to shape row index we need to delete the current shape position
-;    ld a, (currentShapeOffset)
-;    ld hl, (DF_CC)
-;    ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
-;;; this will only draw shape at top need to add current position offset
-;    add hl, de                          ; to where we want to draw shape
-;    ld e, 4
-;deleteOldShapeLoopOuter    
-;    ld b, 2                             ; b now stores max length of definition of shape (i.e. 1 byte)
-;deleteOldShapeLoopInner
-;    ld (hl), 0
-;    inc hl
-;    djnz deleteOldShapeLoopInner                 ; dnjz decrements b and jumps if not zero
-;    ld (outerCount), de                 ; store loop count temp
-;    ld de, 8    
-;    add hl, de                          ; gets current screen position to next row
-;    ld de, (outerCount)                 ; retreive  loop count temp
-;    dec e   
-;    ld a, e
-;    cp 0  
-;    jp nz, deleteOldShapeLoopOuter
-   
-
 drawShape
     ld a, (shape_row_index)
     add a, 10                  ; always need ten as the offset, the left right just adds bit to this   

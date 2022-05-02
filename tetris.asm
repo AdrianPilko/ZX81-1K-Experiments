@@ -215,7 +215,7 @@ drawShapeInner
     jp z, drawTheDamnSquare
     ld a, 1    
     ld (flagForBottomHit), a
-    ;;jp nz, checkIfTopHit  not sure where to put this now
+
 drawTheDamnSquare    
     ld (hl), SHAPE_CHAR    
 
@@ -236,7 +236,7 @@ drawNothing
     jp nz, drawShapeOuter
 
 preWaitLoop
-	ld bc, $09ff
+	ld bc, $0aff
 waitloop
 	dec bc
 	ld a,b
@@ -246,8 +246,9 @@ waitloop
     ld a,(flagForBottomHit)         ; on current shape draw we detected that if the shape dropped one
                                     ; more line it would hit the something
     cp 1
-    jp z, main
-    
+    jp z, checkIfTopWillBeHit
+       
+continueDrop    
     ld a, (shape_row)
     inc a
     ld (shape_row),a    
@@ -260,21 +261,18 @@ waitloop
 ;; increase score if line(s) removed
 
 ;; detect if game over condition met, it collision between shape entering at top
-
-
-	jp main   ; never return to basic, new game always starts from title screen
-
-checkIfTopHit       ; check the condition if the top is reached
+    jp main
+    
+checkIfTopWillBeHit         ; call if bottom was hit and if this means no space at top
+    ; check the if the top is reached then game over
     ld a, (shape_row)    
-    cp 4                ; depends on shape so need multiple compares
-    jp z, gameOver    
-    cp 3                ; depends on shape so need multiple compares
-    jp z, gameOver
     cp 2                ; depends on shape so need multiple compares
     jp z, gameOver
     cp 1                ; depends on shape so need multiple compares
-    jp main
-
+    jp z, gameOver
+    jp main             ; otherwise is safe to continue the next shape to drop 
+    
+    
 gameOver
     ld bc,22
     ld de,game_over_txt1    

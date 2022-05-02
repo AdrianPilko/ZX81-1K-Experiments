@@ -248,6 +248,8 @@ waitloop
 
 checkIfTopHit       ; check the condition if the top is reached
     ld a, (shape_row)    
+    cp 4                ; depends on shape so need multiple compares
+    jp z, gameOver    
     cp 3                ; depends on shape so need multiple compares
     jp z, gameOver
     cp 2                ; depends on shape so need multiple compares

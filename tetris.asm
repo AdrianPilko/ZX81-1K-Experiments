@@ -13,7 +13,8 @@
 ;   improve randomness
 ;   if line made then remove and shuffle others down (IMAGINE WILL BE HARD TODO)
 ;   speed up game each time line removed
-;   the 4 in a row shape is never chosen, if I change the and 3 to and 4, after random it only does 2 shapes
+;   the T shape is never chosen, if I change the and 3 to and 4, after random it only does 2 shapes
+;   the delete old shape needs to use the proper shape definition, not overwrite 8 blocks
 
 ; all the includes came from  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
 #include "zx81defs.asm" 
@@ -38,21 +39,23 @@
 ;; characters in charcodes.asm, they are more human readble 
 ;; shortcuts, than decimal equivalent 
 title_screen_txt
-	DEFB	_T,_E,_T,_R,_I,_S,$ff
+	DEFB _T,_E,_T,_R,_I,_S,_QM,$ff
 game_over_txt1
 	DEFB	_G,_A,_M,_E,$ff    
 game_over_txt2
     DEFB	_O,_V,_E,_R,$ff    
 currentShape    
     DEFB 0
-shapes      ; base shape stored in upright positions, as they start at top, 2column * 4 rows to make logic easier
-            ; e.g. normal L is  10  rev L  01  square 00  T  00  4inrow 01
-            ;                   10         01         00     01         01  
-            ;                   10         01         11     11         01
-            ;                   11         11         11     01         01
+shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shape
+            ; base shape 2 column * 4 rows to make logic easier, interpreted as such in the code and definition 
+            ;  "square"   "L"    "straight"   "T"  "skew"
+            ;       00     00       01        00     00
+            ;       00     10       01        01     10    
+            ;       11     10       01        11     11    
+            ;       11     11       01        01     01    
 ; shape definition (bit packed)
-        ; square       L    reverse L    T      4 in row
-   DEFB %00001111,%10101011,%01010111,%00011101,%01010101 
+; first has to be blank   square       L         straight  T         skew
+   DEFB %00001111,        %00101011,%01010101,%00011101,%00101101
 
 screen_area_blank_txt
 	DEFB	__,__,__,__,__,__,__,$ff
@@ -119,7 +122,7 @@ main
     ld a, 13
     ld (shape_row_index),a
     ;; generate shape       
-    ld a, r
+    ld a, r                 ; we want a number 0 to 4 inclusive 
     and %00000011
     ld (currentShapeOffset), a
 
@@ -127,7 +130,7 @@ dropLoop                                ; delete old shape move current shape do
 
 deleteOldShape
     ;before we add to shape row index we need to delete the current shape position
-    ld a, (currentShapeOffset)
+    ;ld a, (currentShapeOffset)
     ld hl, (DF_CC)
     ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
     ;; this will only draw shape at top need to add current position offset

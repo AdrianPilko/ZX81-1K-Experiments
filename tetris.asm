@@ -200,14 +200,12 @@ drawShapeInner
     ;; we also need to draw the shape from the bottom upwards, because we want to detect the collision earlier
     ;; and actually we should to a "trial draw of shape then if no collisions actually draw it!!
     ld a, (hl)
-    and SHAPE_CHAR          ;; this will result in "true" if shape exists already
+    and SHAPE_CHAR                      ; this will result in "true" if block exists already in that position
     cp 0
     jp nz, checkIfTopHit
+    
     ld (hl), SHAPE_CHAR    
-    jr carryOn
-drawSpace    
-    ;ld (hl), 0                         ; commented out now as we don't want to overrite characters anymore (we delete shape differnetly above)
-carryOn
+
     inc hl
     xor a
     ld a, c    

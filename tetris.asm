@@ -37,10 +37,11 @@ currentShape
     DEFB 0
 shapes      ; base shape stored in upright positions, as they start at top, 2column * 4 rows to make logic easier
             ; e.g. normal L is  10  rev L  01  square 00  T  00  4inrow 01
-            ;                   10         01         11     01         01  
+            ;                   10         01         00     01         01  
             ;                   10         01         11     11         01
-            ;                   11         11         00     01         01
+            ;                   11         11         11     01         01
 ; shape definition (bit packed)
+        ; square       L    reverse L    T      4 in row
    DEFB %00001111,%10101011,%01010111,%00011101,%01010101 
 
 screen_area_blank_txt
@@ -62,6 +63,8 @@ bottomLevel
     DEFB 19
 initScreenIndex
     DEFB 0,0
+flagForBottomHit
+    DEFB 0
         
 ;; intro screen
 intro_title
@@ -94,9 +97,10 @@ initialiseVariables
     ld (shapeTrackLeftRight),a 
     ld a, 1
     ld (shape_row),a    
-
     ;; main game loop
 main
+    ld a, 0
+    ld (flagForBottomHit), a
     ld a, 1
     ld (shape_row),a
     ld a, 5
@@ -109,7 +113,7 @@ main
     and %00000011
     ld (currentShapeOffset), a
 
-dropLoop  
+dropLoop                                ; delete old shape move current shape down one
 
 deleteOldShape
     ;before we add to shape row index we need to delete the current shape position
@@ -199,10 +203,20 @@ drawShapeInner
     ; detect if hl is already drawn on (ie a block already in that location, if so stop
     ;; we also need to draw the shape from the bottom upwards, because we want to detect the collision earlier
     ;; and actually we should to a "trial draw of shape then if no collisions actually draw it!!
+    
+    push hl
+    ld de, 10   
+    add hl, de
     ld a, (hl)
     and SHAPE_CHAR                      ; this will result in "true" if block exists already in that position
     cp 0
-    jp nz, checkIfTopHit
+    pop hl
+    ;; set a flag to say if move shape one more down will be collision
+    jp z, drawTheDamnSquare
+    ld a, 1    
+    ld (flagForBottomHit), a
+    ;;jp nz, checkIfTopHit  not sure where to put this now
+drawTheDamnSquare    
     ld (hl), SHAPE_CHAR    
 
 drawNothing
@@ -228,13 +242,17 @@ waitloop
 	ld a,b
 	or c
 	jr nz, waitloop
-       
+
+    ld a,(flagForBottomHit)         ; on current shape draw we detected that if the shape dropped one
+                                    ; more line it would hit the something
+    cp 1
+    jp z, main
+    
     ld a, (shape_row)
     inc a
     ld (shape_row),a    
     cp 19                            ; only gets here if no shapes at bottom
     jp nz, dropLoop
-
 ;; user input to rotate shape
 
 ;; detect if line(s) has/have been completed and remove, and drop remaining down

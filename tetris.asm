@@ -42,8 +42,9 @@ shapes      ; base shape stored in upright positions, as they start at top, 2col
             ;                   11         11         00     01         01
 ; shape definition (bit packed)
    DEFB %00001111,%10101011,%01010111,%00011101,%01010101 
-;
-;
+
+screen_area_blank_txt
+	DEFB	__,__,__,__,__,__,__,$ff
     
 shape_row_index     ; the current row of the top of the falling shape
     DEFB 0
@@ -60,7 +61,7 @@ shape_row
 bottomLevel    
     DEFB 19
 initScreenIndex
-    DEFB 0
+    DEFB 0,0
         
 ;; intro screen
 intro_title
@@ -70,32 +71,24 @@ intro_title
 	ld de,title_screen_txt      ; load text into de for printstring
 	call printstring	
     
-    ; commented out as not working yet
-    
     ; clear the play area (is need for all after first game as play area will be filled with previous blocks
-;    ld b, 21
-;    ld a, 2
-;    ld (initScreenIndex), a 
-;    ld hl, (DF_CC)
-;preClearPlayArea    
-;    ld e, 0
-;clearPlayArea        
-;    ld c, a
-;    add hl, bc
-;    ld (hl), 0
-;    inc e
-;    ld a,(initScreenIndex)
-;    inc a    
-;    ld (initScreenIndex), a 
-;    ld a, 7
-;    cp e
-;    jp nz, clearPlayArea
-;    
-;    ld (initScreenIndex), a     ; need the extra addition to get past the new line character and left wall
-;    add a, 3    
-;    ld (initScreenIndex), a 
-;    djnz clearPlayArea
-		
+    ld a, 0
+    ld (shape_row),a    
+    ld a, 11    
+    ld (initScreenIndex),a    
+initPlayAreaLoop        
+    ld bc, (initScreenIndex)
+	ld de,screen_area_blank_txt
+    call printstring    
+    ld a,(initScreenIndex)    
+    add a, 10            
+    ld (initScreenIndex),a    
+    ld a, (shape_row)
+    inc a
+    ld (shape_row),a    
+    cp 22                            ; this code will have to change to take into account collision with shapes and done above
+    jp nz, initPlayAreaLoop
+    
 initialiseVariables
     ld a, 5
     ld (shapeTrackLeftRight),a 
@@ -231,7 +224,7 @@ carryOn
     jp nz, drawShapeOuter
 
 preWaitLoop
-	ld bc, $08ff
+	ld bc, $09ff
 waitloop
 	dec bc
 	ld a,b
@@ -241,12 +234,8 @@ waitloop
     ld a, (shape_row)
     inc a
     ld (shape_row),a    
-    cp 19                            ; this code will have to change to take into account collision with shapes and done above
-                                     ; and will need to handle the left right moves
+    cp 19                            ; only gets here if no shapes at bottom
     jp nz, dropLoop
-    
-    ;; change from maintaining a bottom level store, to just detecting if there would be a collision between any of the blocks 
-    ;; in the shape an and the current play area 
 
 ;; user input to rotate shape
 
@@ -261,8 +250,11 @@ waitloop
 
 checkIfTopHit       ; check the condition if the top is reached
     ld a, (shape_row)    
-    cp 4 
+    cp 3                ; depends on shape so need multiple compares
     jp z, gameOver
+    cp 2                ; depends on shape so need multiple compares
+    jp z, gameOver
+    cp 1                ; depends on shape so need multiple compares
     jp main
 
 gameOver

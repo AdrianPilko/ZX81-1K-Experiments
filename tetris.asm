@@ -57,8 +57,8 @@ shapeTrackLeftRight
     DEFB 0    
 shape_row
     DEFB 0
-bottomLevels    
-    DEFB 19,19,19,19,19,19,19,19
+bottomLevel    
+    DEFB 19
 initScreenIndex
     DEFB 0
         
@@ -101,13 +101,7 @@ initialiseVariables
     ld (shapeTrackLeftRight),a 
     ld a, 1
     ld (shape_row),a    
-    ld b, 7
-initBottom    
-    ;ld a, 19
-    ld hl, bottomLevels
-    ld (hl), 19
-    djnz initBottom
-    
+
     ;; main game loop
 main
     ld a, 1
@@ -125,15 +119,11 @@ main
 dropLoop  
 
 deleteOldShape
-    ;ld a, (shape_row_index)
-    ;add a, 10                  ; always need ten as the offset, the left right just adds bit to this   
-    ;ld (shape_row_index), a
-    
     ;before we add to shape row index we need to delete the current shape position
     ld a, (currentShapeOffset)
     ld hl, (DF_CC)
     ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
-;; this will only draw shape at top need to add current position offset
+    ;; this will only draw shape at top need to add current position offset
     add hl, de                          ; to where we want to draw shape
     ld e, 4
 deleteOldShapeLoopOuter    
@@ -150,9 +140,6 @@ deleteOldShapeLoopInner
     ld a, e
     cp 0  
     jp nz, deleteOldShapeLoopOuter
-  
-
-
    
     ; read the keyboard input and adust the offset     
 	ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
@@ -216,6 +203,13 @@ drawShapeInner
     ld a, (currentShape)    
     and c                               ; set to block or no block based on (shapes)     
     jp z, drawSpace
+    ; detect if hl is already drawn on (ie a block already in that location, if so stop
+    ;; we also need to draw the shape from the bottom upwards, because we want to detect the collision earlier
+    ;; and actually we should to a "trial draw of shape then if no collisions actually draw it!!
+    ld a, (hl)
+    and SHAPE_CHAR          ;; this will result in "true" if shape exists already
+    cp 0
+    jp nz, checkIfTopHit
     ld (hl), SHAPE_CHAR    
     jr carryOn
 drawSpace    
@@ -236,6 +230,7 @@ carryOn
     cp 0  
     jp nz, drawShapeOuter
 
+preWaitLoop
 	ld bc, $08ff
 waitloop
 	dec bc
@@ -246,27 +241,13 @@ waitloop
     ld a, (shape_row)
     inc a
     ld (shape_row),a    
-    ld bc, (bottomLevels)       ; for some reason ld b, (bottomLevels) then cp b doesn't work?? needs ld bc...
-    cp c                         ; this code will have to change to take into acount highest shape
+    cp 19                            ; this code will have to change to take into account collision with shapes and done above
                                      ; and will need to handle the left right moves
     jp nz, dropLoop
     
-    ;; check and update the bottom levels which effectively stores the current height in each column
-    
-    ;ld e, (shapeTrackLeftRight)        
-    ;ld d, 0
-    ld hl, bottomLevels            ; we need to change bottomLevels based on what shape it was!?? (later dudes)
-    ;add hl,de                       ; index into bottomLevels
-    ld a, (hl)
-    dec a                           ; this will eventually be decrement by the vertical size of shape
-    cp 3
-    ld (hl), a
-    jp z, gameOver            
-                 ; compare bottom level to top row the start drawing, if it is there then game over
-                                    ; TODO  needs to account for size of next shape may need todo this just after shape selected
-    
+    ;; change from maintaining a bottom level store, to just detecting if there would be a collision between any of the blocks 
+    ;; in the shape an and the current play area 
 
-    ; for now just decrement
 ;; user input to rotate shape
 
 ;; detect if line(s) has/have been completed and remove, and drop remaining down
@@ -278,7 +259,11 @@ waitloop
 
 	jp main   ; never return to basic, new game always starts from title screen
 
-
+checkIfTopHit       ; check the condition if the top is reached
+    ld a, (shape_row)    
+    cp 4 
+    jp z, gameOver
+    jp main
 
 gameOver
     ld bc,22

@@ -5,6 +5,16 @@
 ;;; The code heavily!! dependant on the definition of the screen memory in screenTetris.asm
 ;;;;;;;;;;;;;;;;;;;;;
 
+; TODO  
+;   scoring
+;   side to side collision detect
+;   rotate shapes (WILL BE HARD!)
+;   maybe change block "grey", we have two types of grey and black (QUICK WIN?)
+;   improve randomness
+;   if line made then remove and shuffle others down (IMAGINE WILL BE HARD TODO)
+;   speed up game each time line removed
+;   the 4 in a row shape is never chosen, if I change the and 3 to and 4, after random it only does 2 shapes
+
 ; all the includes came from  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
 #include "zx81defs.asm" 
 #include "zx81rom.asm"
@@ -236,13 +246,12 @@ drawNothing
     jp nz, drawShapeOuter
 
 preWaitLoop
-	ld bc, $0aff
+	ld bc, $0fff
 waitloop
 	dec bc
 	ld a,b
 	or c
 	jr nz, waitloop
-
     ld a,(flagForBottomHit)         ; on current shape draw we detected that if the shape dropped one
                                     ; more line it would hit the something
     cp 1
@@ -254,6 +263,8 @@ continueDrop
     ld (shape_row),a    
     cp 19                            ; only gets here if no shapes at bottom
     jp nz, dropLoop
+
+;; TODO
 ;; user input to rotate shape
 
 ;; detect if line(s) has/have been completed and remove, and drop remaining down

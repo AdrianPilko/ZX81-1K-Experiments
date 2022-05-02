@@ -195,7 +195,7 @@ drawShapeOuter
 drawShapeInner
     ld a, (currentShape)    
     and c                               ; set to block or no block based on (shapes)     
-    jp z, drawSpace
+    jp z, drawNothing
     ; detect if hl is already drawn on (ie a block already in that location, if so stop
     ;; we also need to draw the shape from the bottom upwards, because we want to detect the collision earlier
     ;; and actually we should to a "trial draw of shape then if no collisions actually draw it!!
@@ -203,9 +203,9 @@ drawShapeInner
     and SHAPE_CHAR                      ; this will result in "true" if block exists already in that position
     cp 0
     jp nz, checkIfTopHit
-    
     ld (hl), SHAPE_CHAR    
 
+drawNothing
     inc hl
     xor a
     ld a, c    

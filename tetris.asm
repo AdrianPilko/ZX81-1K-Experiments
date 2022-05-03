@@ -39,7 +39,7 @@
 ;; characters in charcodes.asm, they are more human readble 
 ;; shortcuts, than decimal equivalent 
 title_screen_txt
-	DEFB _T,_E,_T,_R,_I,_S,_QM,$ff
+	DEFB _T,_3,_T,_R,_1,_S,_QM,$ff
 game_over_txt1
 	DEFB	_G,_A,_M,_E,$ff    
 game_over_txt2
@@ -121,9 +121,12 @@ main
     
     ld a, 13
     ld (shape_row_index),a
-    ;; generate shape       
-    ld a, r                 ; we want a number 0 to 4 inclusive 
-    and %00000011
+
+tryAnotherR                             ; generate random number to index shape memory
+    ld a, r                             ; we want a number 0 to 4 inclusive 
+    and %00000111
+    cp 5
+    jp nc, tryAnotherR                   ; jump if nc flag set ie not less than 5 try again    
     ld (currentShapeOffset), a
 
 dropLoop                                ; delete old shape move current shape down one
@@ -203,7 +206,8 @@ drawShape
     ; draw shape at next row    
     ld hl, (DF_CC)
     ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
-;; this will only draw shape at top need to add current position offset
+
+    ;; this will only draw shape at top need to add current position offset
     add hl, de                          ; to where we want to draw shape
     ld c, %10000000                     ; mask for shape (initialised, but will be rotated  )
     ld e, 4
@@ -224,8 +228,8 @@ drawShapeInner
     and SHAPE_CHAR                      ; this will result in "true" if block exists already in that position
     cp 0
     pop hl
-    ;; set a flag to say if move shape one more down will be collision
-    jp z, drawTheDamnSquare
+                                        
+    jp z, drawTheDamnSquare             ; set a flag to say if move shape one more down will be collision
     ld a, 1    
     ld (flagForBottomHit), a
 

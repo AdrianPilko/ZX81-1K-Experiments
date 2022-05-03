@@ -4,17 +4,18 @@
 ;;; It's a clone of tetris (in case that wasn't clear from filename;)
 ;;; The code heavily!! dependant on the definition of the screen memory in screenTetris.asm
 ;;;;;;;;;;;;;;;;;;;;;
+;;; as of 18:36 3/5/2022 size of assembled p file is 798bytes
 
 ; TODO  
 ;   scoring
 ;   side to side collision detect
 ;   rotate shapes (WILL BE HARD!)
 ;   maybe change block "grey", we have two types of grey and black (QUICK WIN?)
-;   improve randomness
 ;   if line made then remove and shuffle others down (IMAGINE WILL BE HARD TODO)
 ;   speed up game each time line removed
 ;   the T shape is never chosen, if I change the and 3 to and 4, after random it only does 2 shapes
 ;   the delete old shape needs to use the proper shape definition, not overwrite 8 blocks
+;   straight shape doesn't go all way to left, due to wayit's defined and drawn
 
 ; all the includes came from  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
 #include "zx81defs.asm" 
@@ -117,8 +118,7 @@ main
     ld a, 1
     ld (shape_row),a
     ld a, 5
-    ld (shapeTrackLeftRight),a 
-    
+    ld (shapeTrackLeftRight),a     
     ld a, 13
     ld (shape_row_index),a
 
@@ -126,7 +126,7 @@ tryAnotherR                             ; generate random number to index shape 
     ld a, r                             ; we want a number 0 to 4 inclusive 
     and %00000111
     cp 5
-    jp nc, tryAnotherR                   ; jump if nc flag set ie not less than 5 try again    
+    jp nc, tryAnotherR                  ; loop when nc flag set ie not less than 5 try again    
     ld (currentShapeOffset), a
 
 dropLoop                                ; delete old shape move current shape down one
@@ -173,8 +173,7 @@ shapeLeft
     ld (shapeTrackLeftRight),a 
     ld a, (shape_row_index)
     inc a                  
-    ld (shape_row_index), a
-    
+    ld (shape_row_index), a    
 	jp noShapeMove	
 shapeRight
     ld a, (shapeTrackLeftRight)
@@ -186,8 +185,7 @@ shapeRight
     ld a, (shape_row_index)
     dec a     
     ld (shape_row_index), a 
-    jp noShapeMove
-    
+   
 noShapeMove	
       
     
@@ -271,15 +269,40 @@ continueDrop
     cp 19                            ; only gets here if no shapes at bottom
     jp nz, dropLoop
 
-;; TODO
-;; user input to rotate shape
 
-;; detect if line(s) has/have been completed and remove, and drop remaining down
+    jp main                         ; comment out last bit until complete
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; increase score if line(s) removed
+    ld b, 11                        ; offset to first block in screen play area (is 12 but pre inc bc)
+    ld e, 28                        ; loop limt end of row one
 
-;; detect if game over condition met, it collision between shape entering at top
+checkForCompleteLines
+checkLoop
+    inc b
+    ld a, e
+    cp b
+    jp nc, lineIsComplete
+	ld hl,(DF_CC)
+	add hl,bc
+    ld a, $ff
+    and (hl)    
+    jp z, lineIsNotComplete
+    jp checkLoop    
+    ; this line not full
+lineIsComplete    
+    ;;; need to blank this line then shuffle everything above down one
+    
+lineIsNotComplete   
+
+checkCompleteLoopInc
+    ld a, b
+    add 4 
+    ld b, a
+    
     jp main
+
+    ret  ; should never reach
+    
     
 checkIfTopWillBeHit         ; call if bottom was hit and if this means no space at top
     ; check the if the top is reached then game over

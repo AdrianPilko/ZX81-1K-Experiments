@@ -273,33 +273,43 @@ continueDrop
     jp main                         ; comment out last bit until complete
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    ld b, 11                        ; offset to first block in screen play area (is 12 but pre inc bc)
+    ld d, 11                        ; offset to first block in screen play area (is 12 but pre inc d)
     ld e, 28                        ; loop limt end of row one
-
+    ld a, 1
+    ld (shape_row), a               ; use shape_row here to check for bottom reached in check loop
 checkForCompleteLines
 checkLoop
-    inc b
+    inc d
     ld a, e
-    cp b
+    cp d
     jp nc, lineIsComplete
-	ld hl,(DF_CC)
-	add hl,bc
+    ld hl,(DF_CC)
+    add hl,bc
     ld a, $ff
     and (hl)    
     jp z, lineIsNotComplete
     jp checkLoop    
-    ; this line not full
-lineIsComplete    
-    ;;; need to blank this line then shuffle everything above down one
     
+lineIsComplete    
+    ;;; need to shuffle everything above down by one
+    ;Todo!
+    ret  ; put this here as debug to check if logic and loop is working
+    jp checkCompleteLoopInc
+
 lineIsNotComplete   
 
 checkCompleteLoopInc
-    ld a, b
-    add 4 
+    ld a, d
+    add 3       ; this might need to be 4 is just adding to get to next play area start on next line
     ld b, a
-    
-    jp main
+    ld a, e
+    add 10
+    ld e, a
+    ld a, (shape_row)
+    inc a
+    ld (shape_row), a
+    cp 19
+    jp nz, main
 
     ret  ; should never reach
     

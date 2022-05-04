@@ -292,7 +292,11 @@ checkLoop
     
 lineIsComplete    
     ;;; need to shuffle everything above down by one
-    ;Todo!
+    ;  we're using shape_row to keep track vertically so use that to print line
+    push de ; preserve de values
+    ld bc, (shape_row)
+    ld de, (screen_area_blank_txt)
+    call printstring
     ret  ; put this here as debug to check if logic and loop is working
     jp checkCompleteLoopInc
 

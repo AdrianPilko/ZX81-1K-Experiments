@@ -39,8 +39,6 @@
 ;; the underscore characters here are mapped onto real zx81 
 ;; characters in charcodes.asm, they are more human readble 
 ;; shortcuts, than decimal equivalent 
-title_screen_txt
-	DEFB _T,_3,_T,_R,_1,_S,_QM,$ff
 game_over_txt1
 	DEFB	_G,_A,_M,_E,$ff    
 game_over_txt2
@@ -50,13 +48,13 @@ currentShape
 shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shape
             ; base shape 2 column * 4 rows to make logic easier, interpreted as such in the code and definition 
             ;  "square"   "L"    "straight"   "T"  "skew"
-            ;       00     00       01        00     00
-            ;       00     10       01        01     10    
-            ;       11     10       01        11     11    
-            ;       11     11       01        01     01    
+            ;       00     00       10        00     00
+            ;       00     10       10        01     10    
+            ;       11     10       10        11     11    
+            ;       11     11       10        01     01    
 ; shape definition (bit packed)
-; first has to be blank   square       L         straight  T         skew
-   DEFB %00001111,        %00101011,%01010101,%00011101,%00101101
+;        square       L       straight     T         skew
+   DEFB %00001111,  %00101011,%10101010,%00011101,%00101101
 
 screen_area_blank_txt
 	DEFB	__,__,__,__,__,__,__,$ff
@@ -79,15 +77,12 @@ initScreenIndex
     DEFB 0,0
 flagForBottomHit
     DEFB 0
+checkRowIndex
+    DEFB 0
         
 ;; intro screen
-intro_title
-	; no need for clear screen as screenTetris.asm has already set 
-    ; everything to zero    
-	ld bc,1                     ; printstring from offset from DF__CC stored in bc
-	ld de,title_screen_txt      ; load text into de for printstring
-	call printstring	
-    
+intro_title    
+	; screenTetris.asm has already set everything including the title
     ; clear the play area (is need for all after first game as play area will be filled with previous blocks
     ld a, 0
     ld (shape_row),a    
@@ -261,33 +256,37 @@ waitloop
                                     ; more line it would hit the something
     cp 1
     jp z, checkIfTopWillBeHit
-       
+    
 continueDrop    
     ld a, (shape_row)
     inc a
     ld (shape_row),a    
     cp 19                            ; only gets here if no shapes at bottom
     jp nz, dropLoop
-
-
-    jp main                         ; comment out last bit until complete
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-    ld d, 11                        ; offset to first block in screen play area (is 12 but pre inc d)
-    ld e, 28                        ; loop limt end of row one
-    ld a, 1
-    ld (shape_row), a               ; use shape_row here to check for bottom reached in check loop
+    jp main                   
+    
+    
+       
 checkForCompleteLines
+   
+    ld e, 11                        ; offset to first block in screen play area (is 12 but pre inc d)
+    ld d, 18                        ; loop limt end of row one
+    ld a, 1
+    ld (checkRowIndex), a               ; use shape_row here to check for bottom reached in check loop
+    
 checkLoop
-    inc d
+    inc e
     ld a, e
     cp d
     jp nc, lineIsComplete
     ld hl,(DF_CC)
+    ld c, e
+    ld b, 0        
     add hl,bc
-    ld a, $ff
-    and (hl)    
-    jp z, lineIsNotComplete
+    ld a, (hl)
+    and SHAPE_CHAR                      ; this will result in "true" if block exists already in that position
+    cp SHAPE_CHAR
+    jp nz, lineIsNotComplete
     jp checkLoop    
     
 lineIsComplete    
@@ -297,35 +296,42 @@ lineIsComplete
     ld bc, (shape_row)
     ld de, (screen_area_blank_txt)
     call printstring
+    pop de
     ret  ; put this here as debug to check if logic and loop is working
     jp checkCompleteLoopInc
 
 lineIsNotComplete   
 
 checkCompleteLoopInc
-    ld a, d
-    add 3       ; this might need to be 4 is just adding to get to next play area start on next line
-    ld b, a
     ld a, e
-    add 10
-    ld e, a
+    add a, 3       ; this might need to be 4 is just adding to get to next play area start on next line
+    ld b, a
+    ld a, d
+    add a, 10
+    ld d, a
+    ld a, (checkRowIndex)
+    inc a
+    ld (checkRowIndex), a
+    cp 19
+    jp nz, checkLoop
+
     ld a, (shape_row)
     inc a
-    ld (shape_row), a
-    cp 19
-    jp nz, main
-
-    ret  ; should never reach
+    ld (shape_row),a    
+    cp 19                            
+    jp nz, dropLoop      
+    jp main
     
     
-checkIfTopWillBeHit         ; call if bottom was hit and if this means no space at top
-    ; check the if the top is reached then game over
+checkIfTopWillBeHit                     ; call if bottom was hit and if this means no space at top
+                                        ; check the if the top is reached then game over
     ld a, (shape_row)    
-    cp 2                ; depends on shape so need multiple compares
+    cp 2                                ; depends on shape so need multiple compares
     jp z, gameOver
-    cp 1                ; depends on shape so need multiple compares
+    cp 1                                ; depends on shape so need multiple compares
     jp z, gameOver
-    jp main             ; otherwise is safe to continue the next shape to drop 
+    jp main
+    ;jp checkForCompleteLines            ; otherwise is safe to continue the next shape to drop 
     
     
 gameOver

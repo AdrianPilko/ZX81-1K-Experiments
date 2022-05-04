@@ -54,7 +54,8 @@ shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shap
             ;       11     11       10        01     01    
 ; shape definition (bit packed)
 ;        square       L       straight     T         skew
-   DEFB %00001111,  %00101011,%10101010,%00011101,%00101101
+   ;DEFB %00001111,  %00101011,%10101010,%00011101,%00101101
+   DEFB %00101011,  %00101011,%00101101,%00101101,%00101101  
 
 screen_area_blank_txt
 	DEFB	__,__,__,__,__,__,__,$ff
@@ -79,7 +80,9 @@ flagForBottomHit
     DEFB 0
 checkRowIndex
     DEFB 0
-        
+checkColIndex
+    DEFB 0        
+    
 ;; intro screen
 intro_title    
 	; screenTetris.asm has already set everything including the title
@@ -254,10 +257,10 @@ waitloop
 	jr nz, waitloop
     ld a,(flagForBottomHit)         ; on current shape draw we detected that if the shape dropped one
                                     ; more line it would hit the something
-    cp 1
-    jp z, checkIfTopWillBeHit
-    
-continueDrop    
+    cp 1                            ; if flagForBottomHit is set then this will set zero flag
+                                    ; so we need to check if rows are complete first
+    jp z, checkForCompleteLines 
+  
     ld a, (shape_row)
     inc a
     ld (shape_row),a    
@@ -267,18 +270,13 @@ continueDrop
     
     
        
-checkForCompleteLines
-   
-    ld e, 11                        ; offset to first block in screen play area (is 12 but pre inc d)
-    ld d, 18                        ; loop limt end of row one
+checkForCompleteLines   
+    ld e, 12                        ; offset to first block in screen play area 
     ld a, 1
-    ld (checkRowIndex), a               ; use shape_row here to check for bottom reached in check loop
-    
+    ld (checkRowIndex), a               
+    ld a, 7
+    ld (checkColIndex), a                   
 checkLoop
-    inc e
-    ld a, e
-    cp d
-    jp nc, lineIsComplete
     ld hl,(DF_CC)
     ld c, e
     ld b, 0        
@@ -286,23 +284,32 @@ checkLoop
     ld a, (hl)
     and SHAPE_CHAR                      ; this will result in "true" if block exists already in that position
     cp SHAPE_CHAR
-    jp nz, lineIsNotComplete
-    jp checkLoop    
+    jp nz, lineIsNotComplete        
+    inc e
+    ld a, (checkColIndex)
+    dec a
+    ld (checkColIndex), a
+    cp 0
+    jp nz, checkLoop
+    ; if it drops through bottom of loop the line must be complete
     
 lineIsComplete    
+    ret
     ;;; need to shuffle everything above down by one
     ;  we're using shape_row to keep track vertically so use that to print line
     push de ; preserve de values
     ld bc, (shape_row)
     ld de, (screen_area_blank_txt)
     call printstring
-    pop de
-    ret  ; put this here as debug to check if logic and loop is working
+    pop de    
     jp checkCompleteLoopInc
 
 lineIsNotComplete   
-
+    
 checkCompleteLoopInc
+    ld a, 7
+    ld (checkColIndex), a
+    
     ld a, e
     add a, 3       ; this might need to be 4 is just adding to get to next play area start on next line
     ld b, a
@@ -315,14 +322,6 @@ checkCompleteLoopInc
     cp 19
     jp nz, checkLoop
 
-    ld a, (shape_row)
-    inc a
-    ld (shape_row),a    
-    cp 19                            
-    jp nz, dropLoop      
-    jp main
-    
-    
 checkIfTopWillBeHit                     ; call if bottom was hit and if this means no space at top
                                         ; check the if the top is reached then game over
     ld a, (shape_row)    
@@ -331,8 +330,7 @@ checkIfTopWillBeHit                     ; call if bottom was hit and if this mea
     cp 1                                ; depends on shape so need multiple compares
     jp z, gameOver
     jp main
-    ;jp checkForCompleteLines            ; otherwise is safe to continue the next shape to drop 
-    
+
     
 gameOver
     ld bc,22

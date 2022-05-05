@@ -251,10 +251,10 @@ drawNothing
 preWaitLoop
 	ld bc, $0fff
 waitloop
-	dec bc
-	ld a,b
-	or c
-	jr nz, waitloop
+    dec bc
+    ld a,b
+    or c
+    jr nz, waitloop
     ld a,(flagForBottomHit)         ; on current shape draw we detected that if the shape dropped one
                                     ; more line it would hit the something
     cp 1                            ; if flagForBottomHit is set then this will set zero flag
@@ -309,13 +309,9 @@ lineIsNotComplete
 checkCompleteLoopInc
     ld a, 7
     ld (checkColIndex), a
-    
     ld a, e
-    add a, 3       ; this might need to be 4 is just adding to get to next play area start on next line
-    ld b, a
-    ld a, d
     add a, 10
-    ld d, a
+    ld e, a
     ld a, (checkRowIndex)
     inc a
     ld (checkRowIndex), a
@@ -339,12 +335,12 @@ gameOver
     ld bc,32
     ld de,game_over_txt2
     call printstring	
-  	ld bc, $ffff
+    ld bc, $ffff
 waitloopRetryGame
-	dec bc
-	ld a,b
-	or c
-	jr nz, waitloopRetryGame  
+    dec bc
+    ld a,b
+    or c
+    jr nz, waitloopRetryGame  
     jp intro_title
     
     

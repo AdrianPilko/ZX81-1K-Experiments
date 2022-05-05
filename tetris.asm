@@ -282,7 +282,7 @@ checkLoop
     ld b, 0        
     add hl,bc
     ld a, (hl)
-    and SHAPE_CHAR                      ; this will result in "true" if block exists already in that position
+    and SHAPE_CHAR                       ; this will result in "true" if block exists already in that position
     cp SHAPE_CHAR
     jp nz, lineIsNotComplete        
     inc e

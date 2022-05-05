@@ -78,6 +78,8 @@ initScreenIndex
     DEFB 0,0
 flagForBottomHit
     DEFB 0
+checkColOffset
+    DEFB 0,0
 checkRowIndex
     DEFB 0
 checkColIndex
@@ -271,47 +273,54 @@ waitloop
     
        
 checkForCompleteLines   
-    ld e, 12                        ; offset to first block in screen play area 
+    ld a, 12                        ; offset to first block in screen play area 
+    ld (checkColOffset), a
     ld a, 1
     ld (checkRowIndex), a               
-    ld a, 7
+    ld a, 0
     ld (checkColIndex), a                   
 checkLoop
     ld hl,(DF_CC)
-    ld c, e
-    ld b, 0        
+    ld bc, (checkColOffset)
     add hl,bc
     ld a, (hl)
-    and SHAPE_CHAR                       ; this will result in "true" if block exists already in that position
-    cp SHAPE_CHAR
-    jp nz, lineIsNotComplete        
-    inc e
-    ld a, (checkColIndex)
-    dec a
-    ld (checkColIndex), a
+    and SHAPE_CHAR  
     cp 0
+    jp nz, lineIsNotComplete            
+    ld a, (checkColOffset)
+    inc a
+    ld (checkColOffset), a
+    ld a, (checkColIndex)
+    inc a
+    ld (checkColIndex), a
+    cp 7
     jp nz, checkLoop
     ; if it drops through bottom of loop the line must be complete
     
 lineIsComplete    
     ret
+    ;ld a, (checkColOffset)
+    ;ld b, 0			; b is row to print in
+	;ld c, 4			; c is column
+	;call printByte	
     ;;; need to shuffle everything above down by one
     ;  we're using shape_row to keep track vertically so use that to print line
-    push de ; preserve de values
-    ld bc, (shape_row)
-    ld de, (screen_area_blank_txt)
-    call printstring
-    pop de    
+    
+    ;ld bc, (checkColOffset)
+    ;ld de, (screen_area_blank_txt)
+    ;call printstring
     jp checkCompleteLoopInc
 
 lineIsNotComplete   
     
 checkCompleteLoopInc
-    ld a, 7
+    ld a, 0
     ld (checkColIndex), a
-    ld a, e
+    
+    ld a, (checkColOffset)
     add a, 10
-    ld e, a
+    ld (checkColOffset), a
+   
     ld a, (checkRowIndex)
     inc a
     ld (checkRowIndex), a
@@ -342,7 +351,6 @@ waitloopRetryGame
     or c
     jr nz, waitloopRetryGame  
     jp intro_title
-    
     
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
 printstring

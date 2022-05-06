@@ -78,13 +78,14 @@ initScreenIndex
     DEFB 0,0
 flagForBottomHit
     DEFB 0
-checkColOffset
+checkColOffsetStartRow
     DEFB 0,0
 checkRowIndex
     DEFB 0
 checkColIndex
     DEFB 0        
-    
+lineCompleteFlag
+    DEFB 0
 ;; intro screen
 intro_title    
 	; screenTetris.asm has already set everything including the title
@@ -103,7 +104,7 @@ initPlayAreaLoop
     ld a, (shape_row)
     inc a
     ld (shape_row),a    
-    cp 22                            ; this code will have to change to take into account collision with shapes and done above
+    cp 21      ; change back to 22 when debugged check line    ; this code will have to change to take into account collision with shapes and done above
     jp nz, initPlayAreaLoop
     
 initialiseVariables
@@ -261,7 +262,7 @@ waitloop
                                     ; more line it would hit the something
     cp 1                            ; if flagForBottomHit is set then this will set zero flag
                                     ; so we need to check if rows are complete first
-    jp z, checkForCompleteLines 
+    jp z, checkForCompleteLinesInit
   
     ld a, (shape_row)
     inc a
@@ -272,60 +273,67 @@ waitloop
     
     
        
-checkForCompleteLines   
-    ld a, 12                        ; offset to first block in screen play area 
-    ld (checkColOffset), a
-    ld a, 1
+checkForCompleteLinesInit   
+    ;;ld a, 1                        ; offset to first block in screen play area 
+    ld a, 211
+    ld (checkColOffsetStartRow), a    
+    ;ld a, 1
+    ld a, 21
     ld (checkRowIndex), a               
-    ld a, 0
-    ld (checkColIndex), a                   
-checkLoop
+checkLoopSetup
+    ld a, 1
+    ld (lineCompleteFlag),a
     ld hl,(DF_CC)
-    ld bc, (checkColOffset)
+    ld a, (checkColOffsetStartRow)
+    add a, 10
+    ld (checkColOffsetStartRow), a    
+    ld bc, (checkColOffsetStartRow)    
     add hl,bc
+    ld a, 0
+    ld (checkColIndex), a     
+checkLine        
     ld a, (hl)
     and SHAPE_CHAR  
-    cp 0
-    jp nz, lineIsNotComplete            
-    ld a, (checkColOffset)
-    inc a
-    ld (checkColOffset), a
+    inc hl
+    cp SHAPE_CHAR
+    jp nz, setlineNOTComplete
+afterSetlineNOTComplete
+    
     ld a, (checkColIndex)
     inc a
     ld (checkColIndex), a
     cp 7
-    jp nz, checkLoop
-    ; if it drops through bottom of loop the line must be complete
+    jp nz, checkLine                ; always complete check loop fully
     
-lineIsComplete    
-    ret
-    ;ld a, (checkColOffset)
-    ;ld b, 0			; b is row to print in
-	;ld c, 4			; c is column
-	;call printByte	
-    ;;; need to shuffle everything above down by one
-    ;  we're using shape_row to keep track vertically so use that to print line
+    ld a, (lineCompleteFlag)
+    cp 1
+	jp z,removelineIsComplete
     
-    ;ld bc, (checkColOffset)
-    ;ld de, (screen_area_blank_txt)
-    ;call printstring
     jp checkCompleteLoopInc
-
-lineIsNotComplete   
     
-checkCompleteLoopInc
+setlineNOTComplete
     ld a, 0
-    ld (checkColIndex), a
+    ld (lineCompleteFlag),a
+    jp afterSetlineNOTComplete   
     
-    ld a, (checkColOffset)
-    add a, 10
-    ld (checkColOffset), a
-   
+removelineIsComplete        
+    ld bc,32
+    ld de,game_over_txt1
+    call printstring	    
+    push hl ; preserve for after printstring
+    push de    
+    ld bc, (checkColOffsetStartRow)
+    ld de, screen_area_blank_txt    
+    call printstring
+    pop de 
+    pop hl
+ 
+checkCompleteLoopInc
     ld a, (checkRowIndex)
     inc a
     ld (checkRowIndex), a
-    cp 19
-    jp nz, checkLoop
+    cp 22   ;; might have to be 20
+    jp nz, checkLoopSetup
 
 checkIfTopWillBeHit                     ; call if bottom was hit and if this means no space at top
                                         ; check the if the top is reached then game over

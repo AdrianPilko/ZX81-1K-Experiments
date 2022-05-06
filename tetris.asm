@@ -274,11 +274,11 @@ waitloop
     
        
 checkForCompleteLinesInit   
-    ;;ld a, 1                        ; offset to first block in screen play area 
-    ld a, 211
+    ld a, 11                        ; offset to first block in screen play area 
+    ;ld a, 211
     ld (checkColOffsetStartRow), a    
-    ;ld a, 1
-    ld a, 21
+    ld a, 1
+    ;ld a, 21
     ld (checkRowIndex), a               
 checkLoopSetup
     ld a, 1
@@ -316,17 +316,16 @@ setlineNOTComplete
     ld (lineCompleteFlag),a
     jp afterSetlineNOTComplete   
     
-removelineIsComplete        
-    ld bc,32
-    ld de,game_over_txt1
-    call printstring	    
+removelineIsComplete          
     push hl ; preserve for after printstring
     push de    
+    push bc
     ld bc, (checkColOffsetStartRow)
     ld de, screen_area_blank_txt    
     call printstring
     pop de 
     pop hl
+    pop bc
  
 checkCompleteLoopInc
     ld a, (checkRowIndex)

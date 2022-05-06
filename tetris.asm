@@ -4,7 +4,7 @@
 ;;; It's a clone of tetris (in case that wasn't clear from filename;)
 ;;; The code heavily!! dependant on the definition of the screen memory in screenTetris.asm
 ;;;;;;;;;;;;;;;;;;;;;
-;;; as of 18:36 3/5/2022 size of assembled p file is 798bytes
+;;; as of 6/5/2022 size of assembled p file is 890bytes (has to be < 1000 ish)
 
 ; TODO  
 ;   scoring
@@ -54,8 +54,8 @@ shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shap
             ;       11     11       10        01     01    
 ; shape definition (bit packed)
 ;        square       L       straight     T         skew
-   ;DEFB %00001111,  %00101011,%10101010,%00011101,%00101101
-   DEFB %00101011,  %00101011,%00101101,%00101101,%00101101  
+   DEFB %00001111,  %00101011,%10101010,%00011101,%00101101
+  ;;; for debug DEFB %00101011,  %00101011,%00101101,%00101101,%00101101  
 
 screen_area_blank_txt
 	DEFB	__,__,__,__,__,__,__,$ff
@@ -104,7 +104,7 @@ initPlayAreaLoop
     ld a, (shape_row)
     inc a
     ld (shape_row),a    
-    cp 21      ; change back to 22 when debugged check line    ; this code will have to change to take into account collision with shapes and done above
+    cp 22
     jp nz, initPlayAreaLoop
     
 initialiseVariables

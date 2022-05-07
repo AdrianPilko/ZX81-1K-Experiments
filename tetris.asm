@@ -32,10 +32,10 @@
 #define KEYBOARD_READ_PORT $FE 
 
 #define SHAPE_CHAR   128        ; black square
+
+
 	jp intro_title		        ; jump to print title text
 	
-;; initialise "variables" and memory
-
 ;; the underscore characters here are mapped onto real zx81 
 ;; characters in charcodes.asm, they are more human readble 
 ;; shortcuts, than decimal equivalent 
@@ -72,9 +72,7 @@ shapeTrackLeftRight
     DEFB 0    
 shape_row
     DEFB 0
-bottomLevel    
-    DEFB 19
-initScreenIndex
+initScreenIndex 
     DEFB 0,0
 flagForBottomHit
     DEFB 0
@@ -86,33 +84,30 @@ checkColIndex
     DEFB 0        
 lineCompleteFlag
     DEFB 0
+lineRemoved
+    DEFB 0,0
+lineToSuffleFrom
+    DEFB 0,0
+    
 ;; intro screen
 intro_title    
 	; screenTetris.asm has already set everything including the title
     ; clear the play area (is need for all after first game as play area will be filled with previous blocks
-    ld a, 0
-    ld (shape_row),a    
+    ld b, 21
     ld a, 11    
     ld (initScreenIndex),a    
 initPlayAreaLoop        
+    push bc
     ld bc, (initScreenIndex)
 	ld de,screen_area_blank_txt
     call printstring    
     ld a,(initScreenIndex)    
     add a, 10            
     ld (initScreenIndex),a    
-    ld a, (shape_row)
-    inc a
-    ld (shape_row),a    
-    cp 22
-    jp nz, initPlayAreaLoop
+    pop bc
+    djnz initPlayAreaLoop
     
-initialiseVariables
-    ld a, 5
-    ld (shapeTrackLeftRight),a 
-    ld a, 1
-    ld (shape_row),a    
-    ;; main game loop
+;; main game loop
 main
     ld a, 0
     ld (flagForBottomHit), a
@@ -134,7 +129,6 @@ dropLoop                                ; delete old shape move current shape do
 
 deleteOldShape
     ;before we add to shape row index we need to delete the current shape position
-    ;ld a, (currentShapeOffset)
     ld hl, (DF_CC)
     ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
     ;; this will only draw shape at top need to add current position offset
@@ -323,9 +317,48 @@ removelineIsComplete
     ld bc, (checkColOffsetStartRow)
     ld de, screen_area_blank_txt    
     call printstring
-    pop de 
-    pop hl
+    
+    ; move all lives about this down 
+
+    ld hl, (DF_CC)
+    ld bc, (checkColOffsetStartRow)    	; checkColOffsetStartRow is an offset from DF_CC, 
+                                        ; not address of screen memory
+	add hl,bc
+    ld (lineRemoved), hl                ; lineRemoved is now the 16bit copy of address the 
+                                        ; start of play area for the line romoved
+    
+    ld a, (checkColOffsetStartRow)      ; subtract 10 from checkColOffsetStartRow
+    sub 10                              ; this gets us the offset to the previous line...
+    ld (lineToSuffleFrom) , a           ; ...the line we're shuffling down from
+    ld hl,(lineToSuffleFrom)
+    and $00ff
+    ld (lineToSuffleFrom), hl
+    ld bc,(lineToSuffleFrom)
+    ld hl, (DF_CC)
+	add hl,bc
+    ld (lineToSuffleFrom), hl           ; lineToSuffleFrom is a 16 bit value now the offset 
+                                        ; from start of  screen memory
+
+    ld hl, (lineRemoved)            
+    
+    ld b, 7
+loopFor_7_Shuffle        
+    push bc
+    
+    ; this loop crashes!!!!
+;    ld bc, (lineToSuffleFrom)    
+;    ld a, (bc)                          ; the conetnts of the screen at bc into a
+;    ld (hl), a                          ; load screen position at hl with a 
+;    inc hl                              ; move position in screen memory we're writing to on one 
+;    inc bc                              ; move the position we're moving from on one
+;                                        ; loop count down to zero                                        
+;    ld (lineToSuffleFrom), bc
     pop bc
+    djnz loopFor_7_Shuffle            
+    
+    pop bc
+    pop de         
+    pop hl
  
 checkCompleteLoopInc
     ld a, (checkRowIndex)

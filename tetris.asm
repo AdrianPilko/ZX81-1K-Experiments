@@ -67,9 +67,9 @@ shape_col_index     ; the current column of the top left of the falling shape
 outerCount  
     DEFB 0,0
 currentShapeOffset    
-    DEFB 0
+    DEFB 0,0
 shapeTrackLeftRight
-    DEFB 0    
+    DEFB 0,0    
 shape_row
     DEFB 0
 initScreenIndex 
@@ -269,10 +269,8 @@ waitloop
        
 checkForCompleteLinesInit   
     ld a, 11                        ; offset to first block in screen play area 
-    ;ld a, 211
     ld (checkColOffsetStartRow), a    
     ld a, 1
-    ;ld a, 21
     ld (checkRowIndex), a               
 checkLoopSetup
     ld a, 1
@@ -318,7 +316,8 @@ removelineIsComplete
     ld de, screen_area_blank_txt    
     call printstring
     
-    ; move all lives about this down 
+    ; move all lives about this down by one
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ld hl, (DF_CC)
     ld bc, (checkColOffsetStartRow)    	; checkColOffsetStartRow is an offset from DF_CC, 
@@ -330,31 +329,24 @@ removelineIsComplete
     ld a, (checkColOffsetStartRow)      ; subtract 10 from checkColOffsetStartRow
     sub 10                              ; this gets us the offset to the previous line...
     ld (lineToSuffleFrom) , a           ; ...the line we're shuffling down from
-    ld hl,(lineToSuffleFrom)
-    and $00ff
-    ld (lineToSuffleFrom), hl
     ld bc,(lineToSuffleFrom)
     ld hl, (DF_CC)
 	add hl,bc
     ld (lineToSuffleFrom), hl           ; lineToSuffleFrom is a 16 bit value now the offset 
                                         ; from start of  screen memory
-
     ld hl, (lineRemoved)            
-    
-    ld b, 7
-loopFor_7_Shuffle        
-    push bc
-    
-    ; this loop crashes!!!!
-;    ld bc, (lineToSuffleFrom)    
-;    ld a, (bc)                          ; the conetnts of the screen at bc into a
-;    ld (hl), a                          ; load screen position at hl with a 
-;    inc hl                              ; move position in screen memory we're writing to on one 
-;    inc bc                              ; move the position we're moving from on one
-;                                        ; loop count down to zero                                        
-;    ld (lineToSuffleFrom), bc
-    pop bc
-    djnz loopFor_7_Shuffle            
+ 
+    ld e, 6
+loopFor_7_Shuffle           
+    ld a,(bc)        
+    ;ld (hl), a   ;; this instruction crashes!!       ; load screen position at hl with a 
+    inc hl                              ; move position in screen memory we're writing to on one 
+    inc bc                              ; move the position we're moving from on one
+                                        ; loop count down to zero                                        
+    inc e
+    ld a, e
+    cp 7
+    jp nz, loopFor_7_Shuffle            
     
     pop bc
     pop de         

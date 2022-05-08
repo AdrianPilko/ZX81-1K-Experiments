@@ -88,12 +88,13 @@ lineRemoved
     DEFB 0,0
 lineToSuffleFrom
     DEFB 0,0
-    
+copyOfCheckColOffsetStartRow
+    DEFB 0,0
 ;; intro screen
 intro_title    
 	; screenTetris.asm has already set everything including the title
     ; clear the play area (is need for all after first game as play area will be filled with previous blocks
-    ld b, 21
+    ld b, 22
     ld a, 11    
     ld (initScreenIndex),a    
 initPlayAreaLoop        
@@ -312,42 +313,52 @@ removelineIsComplete
     push hl ; preserve for after printstring
     push de    
     push bc
-    ld bc, (checkColOffsetStartRow)
-    ld de, screen_area_blank_txt    
-    call printstring
+;    ld bc, (checkColOffsetStartRow)
+;    ld de, screen_area_blank_txt    
+;    call printstring
     
     ; move all lives about this down by one
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ld a, (checkColOffsetStartRow)
+    ld (copyOfCheckColOffsetStartRow), a
 
+playAreaShuffle
     ld hl, (DF_CC)
-    ld bc, (checkColOffsetStartRow)    	; checkColOffsetStartRow is an offset from DF_CC, 
+    ld bc, (copyOfCheckColOffsetStartRow)    	; checkColOffsetStartRow is an offset from DF_CC, 
                                         ; not address of screen memory
 	add hl,bc
     ld (lineRemoved), hl                ; lineRemoved is now the 16bit copy of address the 
-                                        ; start of play area for the line romoved
-    
-    ld a, (checkColOffsetStartRow)      ; subtract 10 from checkColOffsetStartRow
+                                        ; start of play area for the line romoved    
+    ld a, (copyOfCheckColOffsetStartRow)      ; subtract 10 from checkColOffsetStartRow
     sub 10                              ; this gets us the offset to the previous line...
-    ld (lineToSuffleFrom) , a           ; ...the line we're shuffling down from
+    ld (copyOfCheckColOffsetStartRow),a      ; subtract 10 from checkColOffsetStartRow
+    ld hl, $00                          ; have to zero this here otherwise left overs in lineToSuffleFrom top 8bits 
+    ld (lineToSuffleFrom), hl
+    ld (lineToSuffleFrom) , a           ; ...the line we're shuffling down from 
     ld bc,(lineToSuffleFrom)
     ld hl, (DF_CC)
 	add hl,bc
     ld (lineToSuffleFrom), hl           ; lineToSuffleFrom is a 16 bit value now the offset 
                                         ; from start of  screen memory
     ld hl, (lineRemoved)            
- 
-    ld e, 6
+    ld bc, (lineToSuffleFrom)
+    ld e, 0
 loopFor_7_Shuffle           
     ld a,(bc)        
-    ;ld (hl), a   ;; this instruction crashes!!       ; load screen position at hl with a 
+    ld (hl), a   ;; this instruction crashes!!       ; load screen position at hl with a    
     inc hl                              ; move position in screen memory we're writing to on one 
     inc bc                              ; move the position we're moving from on one
                                         ; loop count down to zero                                        
     inc e
     ld a, e
     cp 7
-    jp nz, loopFor_7_Shuffle            
-    
+    jp nz, loopFor_7_Shuffle     
+
+    ; need to loop until reached top with copy of checkColOffsetStartRow    
+    ld a,(copyOfCheckColOffsetStartRow)  
+    cp 21
+    jp nz, playAreaShuffle
+   
     pop bc
     pop de         
     pop hl
@@ -383,7 +394,8 @@ waitloopRetryGame
     or c
     jr nz, waitloopRetryGame  
     jp intro_title
-    
+
+   
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
 printstring
 	ld hl,(DF_CC)

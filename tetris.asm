@@ -21,7 +21,7 @@
 #include "zx81defs.asm" 
 #include "zx81rom.asm"
 #include "charcodes.asm"
-#include "zx81sys.asm"
+#include "zx81sysTetris.asm"                ;; removed some of unneeded definitions
 #include "line1.asm"
 
 ; keyboard port for shift key to v
@@ -55,7 +55,6 @@ shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shap
 ; shape definition (bit packed)
 ;        square       L       straight     T         skew
    DEFB %00001111,  %00101011,%10101010,%00011101,%00101101
-  ;;; for debug DEFB %00101011,  %00101011,%00101101,%00101101,%00101101  
 
 screen_area_blank_txt
 	DEFB	__,__,__,__,__,__,__,$ff
@@ -90,6 +89,8 @@ lineToSuffleFrom
     DEFB 0,0
 copyOfCheckColOffsetStartRow
     DEFB 0,0
+rotationCount           ; zero means not rotated!    
+    DEFB 0
 ;; intro screen
 intro_title    
 	; screenTetris.asm has already set everything including the title
@@ -149,7 +150,16 @@ deleteOldShapeLoopInner
     ld a, e
     cp 0  
     jp nz, deleteOldShapeLoopOuter
-   
+
+	ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
+	in a, (KEYBOARD_READ_PORT)					; read from io port	
+	bit 2, a
+	; check bit set for key press rotate  use X key 
+	jp nz, noRotation								
+    ld a, 1
+    ld (rotationCount), a
+    
+noRotation    
     ; read the keyboard input and adust the offset     
 	ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
 	in a, (KEYBOARD_READ_PORT)					; read from io port	
@@ -204,6 +214,8 @@ drawShape
     ;; this will only draw shape at top need to add current position offset
     add hl, de                          ; to where we want to draw shape
     ld c, %10000000                     ; mask for shape (initialised, but will be rotated  )
+    
+                                        l
     ld e, 4
 drawShapeOuter    
     ld b, 2                             ; b now stores max length of definition of shape (i.e. 1 byte)

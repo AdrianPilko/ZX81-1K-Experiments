@@ -155,13 +155,13 @@ deleteOldShapeLoopInner
 	in a, (KEYBOARD_READ_PORT)					; read from io port	
 	bit 1, a
 	; check bit set for key press left  (Z)
-	jp z, shapeRight								; jump to move shape left
+	jp z, shapeLeft								; jump to move shape left
 	ld a, KEYBOARD_READ_PORT_SPACE_TO_B			; read keyboard space to B
 	in a, (KEYBOARD_READ_PORT)					; read from io port		
 	bit 2, a									; check bit set for key press right (M)
-	jr z, shapeLeft							; jump to move shape right	
+	jr z, shapeRight							; jump to move shape right	
 	jp noShapeMove								; dropped through to no move
-shapeLeft
+shapeRight
     ld a, (shapeTrackLeftRight)
     dec a
     cp 1
@@ -171,7 +171,7 @@ shapeLeft
     inc a                  
     ld (shape_row_index), a    
 	jp noShapeMove	
-shapeRight
+shapeLeft
     ld a, (shapeTrackLeftRight)
     inc a
     cp 8

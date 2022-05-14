@@ -91,6 +91,8 @@ copyOfCheckColOffsetStartRow
     DEFB 0,0
 rotationCount           ; zero means not rotated!    
     DEFB 0
+innerDrawLoopInit
+    DEFB 0
 ;; intro screen
 intro_title    
 	; screenTetris.asm has already set everything including the title
@@ -119,6 +121,8 @@ main
     ld (shapeTrackLeftRight),a     
     ld a, 13
     ld (shape_row_index),a
+    ld a, 0
+    ld (rotationCount), a           
 
 tryAnotherR                             ; generate random number to index shape memory
     ld a, r                             ; we want a number 0 to 4 inclusive 
@@ -215,10 +219,22 @@ drawShape
     add hl, de                          ; to where we want to draw shape
     ld c, %10000000                     ; mask for shape (initialised, but will be rotated  )
     
-                                        l
+    ;; alter loop counts when rotating so draw horizontal or vertical, not just vertical                                    l
+    ld a, (rotationCount)
+    cp 1
+    jr z, drawHorizLoopCountSetup
     ld e, 4
+    ld a, 2
+    ld (innerDrawLoopInit), a
+    jr drawShapeOuter
+drawHorizLoopCountSetup
+    ld e, 2
+    ld a, 4
+    ld (innerDrawLoopInit), a
+    
 drawShapeOuter    
-    ld b, 2                             ; b now stores max length of definition of shape (i.e. 1 byte)
+    ld a, (innerDrawLoopInit)         
+    ld b, a             ; directly loading into b from memory fails?? MS byte not used error??
 drawShapeInner
     ld a, (currentShape)    
     and c                               ; set to block or no block based on (shapes)     

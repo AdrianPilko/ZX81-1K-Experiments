@@ -133,6 +133,14 @@ tryAnotherR                             ; generate random number to index shape 
 
 dropLoop                                ; delete old shape move current shape down one
 
+	ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
+	in a, (KEYBOARD_READ_PORT)					; read from io port	
+	bit 2, a
+	; check bit set for key press rotate  use X key 
+	jp nz, deleteOldShape								
+    ld a, 1
+    ld (rotationCount), a
+   
 deleteOldShape
     ;before we add to shape row index we need to delete the current shape position
     ld hl, (DF_CC)
@@ -154,16 +162,7 @@ deleteOldShapeLoopInner
     ld a, e
     cp 0  
     jp nz, deleteOldShapeLoopOuter
-
-	ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
-	in a, (KEYBOARD_READ_PORT)					; read from io port	
-	bit 2, a
-	; check bit set for key press rotate  use X key 
-	jp nz, noRotation								
-    ld a, 1
-    ld (rotationCount), a
-    
-noRotation    
+   
     ; read the keyboard input and adust the offset     
 	ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
 	in a, (KEYBOARD_READ_PORT)					; read from io port	

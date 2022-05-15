@@ -91,6 +91,8 @@ copyOfCheckColOffsetStartRow
     DEFB 0,0
 rotationCount           ; zero means not rotated!    
     DEFB 0
+innerDrawLoopInit
+    DEFB 0
 ;; intro screen
 intro_title    
 	; screenTetris.asm has already set everything including the title
@@ -119,6 +121,8 @@ main
     ld (shapeTrackLeftRight),a     
     ld a, 13
     ld (shape_row_index),a
+    ld a, 0
+    ld (rotationCount), a           
 
 tryAnotherR                             ; generate random number to index shape memory
     ld a, r                             ; we want a number 0 to 4 inclusive 
@@ -129,15 +133,32 @@ tryAnotherR                             ; generate random number to index shape 
 
 dropLoop                                ; delete old shape move current shape down one
 
+  
 deleteOldShape
     ;before we add to shape row index we need to delete the current shape position
     ld hl, (DF_CC)
     ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
     ;; this will only draw shape at top need to add current position offset
     add hl, de                          ; to where we want to draw shape
+    ;ld e, 4
+    
+ ;; alter loop counts when rotating so draw horizontal or vertical, not just vertical                                    l
+    ld a, (rotationCount)
+    cp 1
+    jr z, drawDeleteHorizLoopCountSetup
     ld e, 4
+    ld a, 2
+    ld (innerDrawLoopInit), a
+    jr deleteOldShapeLoopOuter
+drawDeleteHorizLoopCountSetup
+    ld e, 2
+    ld a, 4
+    ld (innerDrawLoopInit), a
+    
 deleteOldShapeLoopOuter    
-    ld b, 2                             ; b now stores max length of definition of shape (i.e. 1 byte)
+    ;ld b, 2                             ; b now stores max length of definition of shape (i.e. 1 byte)
+    ld a, (innerDrawLoopInit)         
+    ld b, a             ; directly loading into b from memory fails?? MS byte not used error??    
 deleteOldShapeLoopInner
     ld (hl), 0
     inc hl
@@ -150,16 +171,7 @@ deleteOldShapeLoopInner
     ld a, e
     cp 0  
     jp nz, deleteOldShapeLoopOuter
-
-	ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
-	in a, (KEYBOARD_READ_PORT)					; read from io port	
-	bit 2, a
-	; check bit set for key press rotate  use X key 
-	jp nz, noRotation								
-    ld a, 1
-    ld (rotationCount), a
-    
-noRotation    
+   
     ; read the keyboard input and adust the offset     
 	ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
 	in a, (KEYBOARD_READ_PORT)					; read from io port	
@@ -193,7 +205,16 @@ shapeLeft
     ld (shape_row_index), a 
    
 noShapeMove	
-      
+
+    ;;; read the rotate shape after the left right is done,
+    ;; we draw the shape then next time the delete shape code runs will delete rotated
+	ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
+	in a, (KEYBOARD_READ_PORT)					; read from io port	
+	bit 2, a
+	; check bit set for key press rotate  use X key 
+	jp nz, drawShape								
+    ld a, 1
+    ld (rotationCount), a      
     
 drawShape
     ld a, (shape_row_index)
@@ -215,10 +236,22 @@ drawShape
     add hl, de                          ; to where we want to draw shape
     ld c, %10000000                     ; mask for shape (initialised, but will be rotated  )
     
-                                        l
+    ;; alter loop counts when rotating so draw horizontal or vertical, not just vertical                                    l
+    ld a, (rotationCount)
+    cp 1
+    jr z, drawHorizLoopCountSetup
     ld e, 4
+    ld a, 2
+    ld (innerDrawLoopInit), a
+    jr drawShapeOuter
+drawHorizLoopCountSetup
+    ld e, 2
+    ld a, 4
+    ld (innerDrawLoopInit), a
+    
 drawShapeOuter    
-    ld b, 2                             ; b now stores max length of definition of shape (i.e. 1 byte)
+    ld a, (innerDrawLoopInit)         
+    ld b, a             ; directly loading into b from memory fails?? MS byte not used error??
 drawShapeInner
     ld a, (currentShape)    
     and c                               ; set to block or no block based on (shapes)     
@@ -232,7 +265,7 @@ drawShapeInner
     add hl, de
     ld a, (hl)
     and SHAPE_CHAR                      ; this will result in "true" if block exists already in that position
-    cp 0
+    cp 0                                
     pop hl
                                         
     jp z, drawTheDamnSquare             ; set a flag to say if move shape one more down will be collision
@@ -325,10 +358,7 @@ removelineIsComplete
     push hl ; preserve for after printstring
     push de    
     push bc
-;    ld bc, (checkColOffsetStartRow)
-;    ld de, screen_area_blank_txt    
-;    call printstring
-    
+  
     ; move all lives about this down by one
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ld a, (checkColOffsetStartRow)
@@ -393,12 +423,12 @@ checkIfTopWillBeHit                     ; call if bottom was hit and if this mea
 
     
 gameOver
-    ld bc,22
-    ld de,game_over_txt1    
-    call printstring	    
-    ld bc,32
-    ld de,game_over_txt2
-    call printstring	
+    ;ld bc,22
+    ;ld de,game_over_txt1    
+    ;call printstring	    
+    ;ld bc,32
+    ;ld de,game_over_txt2
+    ;call printstring	
     ld bc, $ffff
 waitloopRetryGame
     dec bc

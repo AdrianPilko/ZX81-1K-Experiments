@@ -4,16 +4,13 @@
 ;;; It's a clone of tetris (in case that wasn't clear from filename;)
 ;;; The code heavily!! dependant on the definition of the screen memory in screenTetris.asm
 ;;;;;;;;;;;;;;;;;;;;;
-;;; as of 6/5/2022 size of assembled p file is 890bytes (has to be < 1000 ish)
+;;; as of 16/5/2022 size of assembled p file is 934bytes (has to be < 950 ish)
 
 ; TODO  
 ;   scoring
 ;   side to side collision detect
-;   rotate shapes (WILL BE HARD!)
-;   maybe change block "grey", we have two types of grey and black (QUICK WIN?)
-;   if line made then remove and shuffle others down (IMAGINE WILL BE HARD TODO)
+;   rotate shapes (IS SUPER HARD!)
 ;   speed up game each time line removed
-;   the T shape is never chosen, if I change the and 3 to and 4, after random it only does 2 shapes
 ;   the delete old shape needs to use the proper shape definition, not overwrite 8 blocks
 ;   straight shape doesn't go all way to left, due to wayit's defined and drawn
 
@@ -31,30 +28,32 @@
 ; starting port numbner for keyboard, is same as first port for shift to v
 #define KEYBOARD_READ_PORT $FE 
 
-#define SHAPE_CHAR   128        ; black square
-
+#define SHAPE_CHAR_0   128        ; black square
+#define SHAPE_CHAR_1 136        ; grey square
+#define BOTTOM 20
 
 	jp intro_title		        ; jump to print title text
 	
 ;; the underscore characters here are mapped onto real zx81 
 ;; characters in charcodes.asm, they are more human readble 
 ;; shortcuts, than decimal equivalent 
-game_over_txt1
-	DEFB	_G,_A,_M,_E,$ff    
+;game_over_txt1
+;	DEFB	_G,_A,_M,_E,$ff    
 game_over_txt2
-    DEFB	_O,_V,_E,_R,$ff    
+    DEFB	_O,_V,_E,_R,$ff        
 currentShape    
     DEFB 0
 shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shape
             ; base shape 2 column * 4 rows to make logic easier, interpreted as such in the code and definition 
-            ;  "square"   "L"    "straight"   "T"  "skew"
-            ;       00     00       10        00     00
-            ;       00     10       10        01     10    
-            ;       11     10       10        11     11    
-            ;       11     11       10        01     01    
+            ;  "square"   "L"    "straight"   "T"  "skew left" "skew right"
+            ;       00     00       10        00     00          00 
+            ;       00     10       10        01     10          01     
+            ;       11     10       10        11     11          11     
+            ;       11     11       10        01     01          10     
 ; shape definition (bit packed)
-;        square       L       straight     T         skew
-   DEFB %00001111,  %00101011,%10101010,%00011101,%00101101
+;        square       L R/L   straight     T L/R   skew L   skew R
+   DEFB %00001111,  %00101011,%10101010,%00011101,%00101101, %00011110   
+   DEFB             %00010111,           %00101110,    
 
 screen_area_blank_txt
 	DEFB	__,__,__,__,__,__,__,$ff
@@ -97,7 +96,7 @@ innerDrawLoopInit
 intro_title    
 	; screenTetris.asm has already set everything including the title
     ; clear the play area (is need for all after first game as play area will be filled with previous blocks
-    ld b, 22
+    ld b, BOTTOM
     ld a, 11    
     ld (initScreenIndex),a    
 initPlayAreaLoop        
@@ -126,8 +125,8 @@ main
 
 tryAnotherR                             ; generate random number to index shape memory
     ld a, r                             ; we want a number 0 to 4 inclusive 
-    and %00000111
-    cp 5
+    and %00001111
+    cp 8
     jp nc, tryAnotherR                  ; loop when nc flag set ie not less than 5 try again    
     ld (currentShapeOffset), a
 
@@ -140,7 +139,7 @@ deleteOldShape
     ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
     ;; this will only draw shape at top need to add current position offset
     add hl, de                          ; to where we want to draw shape
-    ;ld e, 4
+    
     
  ;; alter loop counts when rotating so draw horizontal or vertical, not just vertical                                    l
     ld a, (rotationCount)
@@ -155,8 +154,7 @@ drawDeleteHorizLoopCountSetup
     ld a, 4
     ld (innerDrawLoopInit), a
     
-deleteOldShapeLoopOuter    
-    ;ld b, 2                             ; b now stores max length of definition of shape (i.e. 1 byte)
+deleteOldShapeLoopOuter        
     ld a, (innerDrawLoopInit)         
     ld b, a             ; directly loading into b from memory fails?? MS byte not used error??    
 deleteOldShapeLoopInner
@@ -264,7 +262,7 @@ drawShapeInner
     ld de, 10   
     add hl, de
     ld a, (hl)
-    and SHAPE_CHAR                      ; this will result in "true" if block exists already in that position
+    and SHAPE_CHAR_0                      ; this will result in "true" if block exists already in that position    
     cp 0                                
     pop hl
                                         
@@ -273,8 +271,14 @@ drawShapeInner
     ld (flagForBottomHit), a
 
 drawTheDamnSquare    
-    ld (hl), SHAPE_CHAR    
-
+    ld a, (currentShapeOffset)
+    and %00000011
+    cp 0
+    jp z, loadAlternateShape1
+    ld (hl), SHAPE_CHAR_0
+    jr drawNothing
+loadAlternateShape1
+    ld (hl), SHAPE_CHAR_1
 drawNothing
     inc hl
     xor a
@@ -307,7 +311,7 @@ waitloop
     ld a, (shape_row)
     inc a
     ld (shape_row),a    
-    cp 19                            ; only gets here if no shapes at bottom
+    cp BOTTOM-2                            ; only gets here if no shapes at bottom
     jp nz, dropLoop
     jp main                   
     
@@ -331,9 +335,9 @@ checkLoopSetup
     ld (checkColIndex), a     
 checkLine        
     ld a, (hl)
-    and SHAPE_CHAR  
+    and SHAPE_CHAR_0  
     inc hl
-    cp SHAPE_CHAR
+    cp SHAPE_CHAR_0
     jp nz, setlineNOTComplete
 afterSetlineNOTComplete
     
@@ -409,7 +413,7 @@ checkCompleteLoopInc
     ld a, (checkRowIndex)
     inc a
     ld (checkRowIndex), a
-    cp 22   ;; might have to be 20
+    cp BOTTOM
     jp nz, checkLoopSetup
 
 checkIfTopWillBeHit                     ; call if bottom was hit and if this means no space at top

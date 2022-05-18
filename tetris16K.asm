@@ -8,10 +8,10 @@
 ; TODO  
 ;   scoring
 ;   side to side collision detect
-;   rotate shapes (IS SUPER HARD!)
 ;   speed up game each time line removed
 ;   the delete old shape needs to use the proper shape definition, not overwrite 8 blocks
 ;   straight shape doesn't go all way to left, due to wayit's defined and drawn
+;   when shape next to edge no logic to prevent rotation, so sticks to wall or worse goes through
 
 ; all the includes came from  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
 #include "zx81defs.asm" 
@@ -169,10 +169,83 @@ deleteOldShape
 	bit 2, a									; check bit set for key press right (M)
 	jr z, shapeRight							; jump to move shape right	
 	jp noShapeMove								; dropped through to no move
+
 shapeRight
+
+    ;; need to account for rotation when checking if shape can go further to right
+    ; and also special case for vertical drawn straight shape to go fully to right
+    
+    ld a, (rotationCount)
+    and %00000001       ;; work out if rotation count is odd or even    
+    jr nz, handleShapeRightForHorizontal             ;; if odd then treat as a horizontal shape
+
+    ;; ok so check if shape is straight, if so gets less width. 
+    ;straight shape offsets are 2, 8, 14, 20
+    ld a, (currentShapeOffset)    
+    cp 2
+    jp z, handleShapeRight_StrVert
+    ld a, (currentShapeOffset)
+    cp 8
+    jp z, handleShapeRight_StrVert    
+    ld a, (currentShapeOffset)
+    cp 14
+    jp z, handleShapeRight_StrVert
+    ld a, (currentShapeOffset)
+    cp 20
+    jp z, handleShapeRight_StrVert
+    
     ld a, (shapeTrackLeftRight)
     dec a
     cp 1
+    jp z, noShapeMove     
+    ld (shapeTrackLeftRight),a 
+    ld a, (shape_row_index)
+    inc a                  
+    ld (shape_row_index), a    
+	jp noShapeMove	
+
+handleShapeRight_StrVert
+    ld a, (shapeTrackLeftRight)
+    dec a
+    cp 0
+    jp z, noShapeMove     
+    ld (shapeTrackLeftRight),a 
+    ld a, (shape_row_index)
+    inc a                  
+    ld (shape_row_index), a    
+	jp noShapeMove	
+    
+handleShapeRightForHorizontal
+
+    ;; ok so check if shape is straight, if so gets less width. 
+    ;straight shape offsets are 2, 8, 14, 20
+    ld a, (currentShapeOffset)    
+    cp 2
+    jp z, handleShapeRight_StrHoriz
+    ld a, (currentShapeOffset)
+    cp 8
+    jp z, handleShapeRight_StrHoriz    
+    ld a, (currentShapeOffset)
+    cp 14
+    jp z, handleShapeRight_StrHoriz
+    ld a, (currentShapeOffset)
+    cp 20
+    jp z, handleShapeRight_StrHoriz
+    
+    ld a, (shapeTrackLeftRight)
+    dec a
+    cp 2
+    jp z, noShapeMove     
+    ld (shapeTrackLeftRight),a 
+    ld a, (shape_row_index)
+    inc a                  
+    ld (shape_row_index), a    
+	jp noShapeMove	
+    
+handleShapeRight_StrHoriz
+    ld a, (shapeTrackLeftRight)
+    dec a
+    cp 3
     jp z, noShapeMove     
     ld (shapeTrackLeftRight),a 
     ld a, (shape_row_index)

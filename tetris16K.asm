@@ -45,16 +45,16 @@ currentShape
 shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shape
             ; base shape 2 column * 4 rows to make logic easier, interpreted as such in the code and definition 
             ;  "square"   "L"    "straight"   "T"  "skew left" "skew right"
-            ;       00     00       10        00     00          00    00   00   0110 10    0110
-            ;       00     10       10        01     10          01    01   00   0110 11    1100
-            ;       11     10       10        11     11          11    11   11        01
-            ;       11     11       10        01     01          10    01   11        00
+            ;       00     00       10        00     00          00    1100   10
+            ;       00     10       10        01     10          01    0110   10
+            ;       11     10       10        11     11          11    
+            ;       11     11       10        01     01          10    
 ; shape definition (bit packed)
 ;        square       L R/L   straight     T L/R   skew L   skew R
    DEFB %00001111,  %00101011,%10101010,%00011101,%00101101, %00011110   ; should be drawn vertically
-   DEFB %01100110,  %00101110,%00001111,%11100100,%01101100, %00011110   ; should be drawn horiz
+   DEFB %01100110,  %00101110,%00001111,%11100100,%01101100, %11000110   ; should be drawn horiz
    DEFB %00001111,  %11010100,%10101010,%10111000,%10110100, %00011110   ; should be drawn vertically
-   DEFB %01100110,  %11101000,%00001111,%01001110,%01101100, %00011110   ; should be drawn horiz   
+   DEFB %01100110,  %11101000,%00001111,%01001110,%01101100, %11000110  ; should be drawn horiz   
 
 ;   DEFB             %00010111,           %00101110,    
 
@@ -136,7 +136,7 @@ main
 tryAnotherR                             ; generate random number to index shape memory
     ld a, r                             ; we want a number 0 to 4 inclusive 
     and %00000111
-    cp 5    
+    cp 6    
     jp nc, tryAnotherR                  ; loop when nc flag set ie not less than 5 try again    
     ld (currentShapeOffset), a
     
@@ -230,14 +230,19 @@ noShapeMove
 	jp nz, drawShape								
     ld a, (rotationCount)
     inc a
-    cp 3
+    cp 4
     jp nz, storeIncrementedRotation
     ld a, 0
     ld (rotationCount), a
-    ; need to subract 18 from shape offset to ghet back to original rotation
+    ; need to subract 18 from shape offset to get back to original rotation
     ld a, (currentShapeOffset)
     sub 18    
     ld (currentShapeOffset),a
+    ;; need to take 2 off shape row when it's rotated, as no longer printing vertically
+    ld a, (shape_row)
+    sub 2
+    ld (shape_row),a
+    
     jp drawShape
 storeIncrementedRotation    
     ld (rotationCount), a      
@@ -349,11 +354,15 @@ addOneToHund
 skipAddHund	
 
 printScoreInGame
-	ld bc, 2
-    ld de, score_mem_hund 
+	ld bc, 1
+    ld de, score_mem_tens
+	call printNumber    
+    
+	ld bc, 4            ; print the current shape    
+    ld de, (currentShapeOffset)    
 	call printNumber    
 
-	ld bc, $0fff
+	ld bc, $1fff
 waitloop
     dec bc
     ld a,b
@@ -368,7 +377,7 @@ waitloop
     ld a, (shape_row)
     inc a
     ld (shape_row),a    
-    cp BOTTOM-2                            ; only gets here if no shapes at bottom
+    cp BOTTOM                            ; only gets here if no shapes at bottom
     jp nz, dropLoop
     jp main                   
     
@@ -526,34 +535,20 @@ printNumber
 	add hl,bc	
 printNumber_loop
 	ld a,(de)
-  	PUSH AF ;store the original value of A for later
-	AND $F0 ; isolate the first digit
-	RRA
-	RRA
-	RRA
-	RRA
-	ADD A,$1C ; add 28 to the character code
+  	push af ;store the original value of a for later
+	and $f0 ; isolate the first digit
+	rra
+	rra
+	rra
+	rra
+	add a,$1c ; add 28 to the character code
 	ld (hl), a
     inc hl
-	POP AF ; retrieve original value of A
-	AND $0F ; isolate the second digit
-	ADD A,$1C ; add 28 to the character code
+	pop af ; retrieve original value of a
+	and $0f ; isolate the second digit
+	add a,$1c ; add 28 to the character code
 	ld (hl), a  
-    inc de
-	ld a,(de)
-  	PUSH AF ;store the original value of A for later
-	AND $F0 ; isolate the first digit
-	RRA
-	RRA
-	RRA
-	RRA
-	ADD A,$1C ; add 28 to the character code
-	ld (hl), a
-    inc hl
-	POP AF ; retrieve original value of A
-	AND $0F ; isolate the second digit
-	ADD A,$1C ; add 28 to the character code
-	ld (hl), a      
+    
 	ret  
 
    

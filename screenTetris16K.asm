@@ -26,8 +26,6 @@ Display        	; empty (collapsed) DFILE on zx81 1K consists of the 25 chr$118 
 	DEFB 118,5,136,136,136,136,136,136,136,133  ; 22    
     DEFB 118,130,131,131,131,131,131,131,131,129; 23
 	DEFB 118
-    DEFB 118
-    DEFB 118
-
+	DEFB 118
                 
 

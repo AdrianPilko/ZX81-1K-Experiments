@@ -17,7 +17,7 @@
 #include "zx81defs.asm" 
 #include "zx81rom.asm"
 #include "charcodes.asm"
-#include "zx81sysTetris.asm"                ;; removed some of unneeded definitions
+#include "zx81sys.asm"                ;; removed some of unneeded definitions
 #include "line1.asm"
 
 ; keyboard port for shift key to v
@@ -36,8 +36,8 @@
 ;; the underscore characters here are mapped onto real zx81 
 ;; characters in charcodes.asm, they are more human readble 
 ;; shortcuts, than decimal equivalent 
-;game_over_txt1
-;	DEFB	_G,_A,_M,_E,$ff    
+game_over_txt1
+	DEFB	_G,_A,_M,_E,$ff    
 game_over_txt2
     DEFB	_O,_V,_E,_R,$ff        
 currentShape    
@@ -51,10 +51,10 @@ shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shap
             ;       11     11       10        01     01          10    01   11        00
 ; shape definition (bit packed)
 ;        square       L R/L   straight     T L/R   skew L   skew R
-   DEFB %00001111,  %00101011,%10101010,%00011101,%00101101, %00011110   ; draw vertically
-   DEFB %01100110,  %00101110,%00001111,%11100100,%01101100, %00011110   ; draw horiz
-   DEFB %00001111,  %11010100,%10101010,%10111000,%10110100, %00011110   ; draw vertically
-   DEFB %01100110,  %11101000,%00001111,%01001110,%01101100, %00011110   ; draw horiz   
+   DEFB %00001111,  %00101011,%10101010,%00011101,%00101101, %00011110   ; should be drawn vertically
+   DEFB %01100110,  %00101110,%00001111,%11100100,%01101100, %00011110   ; should be drawn horiz
+   DEFB %00001111,  %11010100,%10101010,%10111000,%10110100, %00011110   ; should be drawn vertically
+   DEFB %01100110,  %11101000,%00001111,%01001110,%01101100, %00011110   ; should be drawn horiz   
 
 ;   DEFB             %00010111,           %00101110,    
 
@@ -98,7 +98,11 @@ innerDrawLoopInit
 displayLineIncrement
     DEFB 0,0
 displayOuterIncrement    
-    DEFB 0,0
+    DEFB 0,0    
+score_mem_hund
+	DEFB 0	    
+score_mem_tens
+	DEFB 0    
 ;; intro screen
 intro_title    
 	; screenTetris.asm has already set everything including the title
@@ -119,8 +123,6 @@ initPlayAreaLoop
     
 ;; main game loop
 main
-    ld a, 0
-    ld (flagForBottomHit), a
     ld a, 1
     ld (shape_row),a
     ld a, 5
@@ -128,8 +130,9 @@ main
     ld a, 13
     ld (shape_row_index),a
     ld a, 0
+    ld (flagForBottomHit), a    
     ld (rotationCount), a           
-
+   
 tryAnotherR                             ; generate random number to index shape memory
     ld a, r                             ; we want a number 0 to 4 inclusive 
     and %00000111
@@ -294,7 +297,8 @@ drawShapeInner
     ;; and actually we should to a "trial draw of shape then if no collisions actually draw it!!
     
     push hl
-    ld de, (displayLineIncrement)
+    ;ld de, (displayLineIncrement)
+    ld de, 10
     add hl, de
     ld a, (hl)
     and SHAPE_CHAR_0                      ; this will result in "true" if block exists already in that position    
@@ -304,7 +308,7 @@ drawShapeInner
     jp z, drawTheDamnSquare             ; set a flag to say if move shape one more down will be collision
     ld a, 1    
     ld (flagForBottomHit), a
-
+    
 drawTheDamnSquare    
     ld a, (currentShapeOffset)
     and %00000011
@@ -330,7 +334,25 @@ drawNothing
     cp 0  
     jp nz, drawShapeOuter
 
-preWaitLoop
+preWaitloop	
+	ld a, (score_mem_tens)
+	cp 153
+	jr z, addOneToHund
+	jr skipAddHund
+addOneToHund
+	ld a, 0
+	ld (score_mem_tens), a
+    ld a, (score_mem_hund)             
+	add a, 1
+	daa
+	ld (score_mem_hund), a
+skipAddHund	
+
+printScoreInGame
+	ld bc, 2
+    ld de, score_mem_hund 
+	call printNumber    
+
 	ld bc, $0fff
 waitloop
     dec bc
@@ -397,7 +419,12 @@ removelineIsComplete
     push hl ; preserve for after printstring
     push de    
     push bc
-  
+
+
+    ld a,(score_mem_tens)				; add one to score, scoring is binary coded decimal (BCD)
+	add a,1	
+	daa									; z80 daa instruction realigns for BCD after add or subtract  
+    ld (score_mem_tens),a				; add one to score, scoring is binary coded decimal (BCD)
     ; move all lives about this down by one
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ld a, (checkColOffsetStartRow)
@@ -462,13 +489,16 @@ checkIfTopWillBeHit                     ; call if bottom was hit and if this mea
 
     
 gameOver
-    ;ld bc,22
-    ;ld de,game_over_txt1    
-    ;call printstring	    
-    ;ld bc,32
-    ;ld de,game_over_txt2
-    ;call printstring	
+    ld bc,22
+    ld de,game_over_txt1    
+    call printstring	    
+    ld bc,32
+    ld de,game_over_txt2
+    call printstring	
     ld bc, $ffff
+    ld a, 0
+	ld (score_mem_tens), a
+	ld (score_mem_hund), a	    
 waitloopRetryGame
     dec bc
     ld a,b
@@ -491,6 +521,42 @@ printstring_loop
 printstring_end	
 	ret  
 
+printNumber
+	ld hl,(DF_CC)
+	add hl,bc	
+printNumber_loop
+	ld a,(de)
+  	PUSH AF ;store the original value of A for later
+	AND $F0 ; isolate the first digit
+	RRA
+	RRA
+	RRA
+	RRA
+	ADD A,$1C ; add 28 to the character code
+	ld (hl), a
+    inc hl
+	POP AF ; retrieve original value of A
+	AND $0F ; isolate the second digit
+	ADD A,$1C ; add 28 to the character code
+	ld (hl), a  
+    inc de
+	ld a,(de)
+  	PUSH AF ;store the original value of A for later
+	AND $F0 ; isolate the first digit
+	RRA
+	RRA
+	RRA
+	RRA
+	ADD A,$1C ; add 28 to the character code
+	ld (hl), a
+    inc hl
+	POP AF ; retrieve original value of A
+	AND $0F ; isolate the second digit
+	ADD A,$1C ; add 28 to the character code
+	ld (hl), a      
+	ret  
+
+   
 #include "line2.asm"
 #include "screenTetris16K.asm"      			; definition of the screen memory, in colapsed version for 1K        
 #include "endbasic.asm"

@@ -227,7 +227,7 @@ noShapeMove
 	in a, (KEYBOARD_READ_PORT)					; read from io port	
 	bit 2, a
 	; check bit set for key press rotate  use X key 
-	jp nz, drawShape								
+	jp nz, drawShapeHook    
     ld a, (rotationCount)
     inc a
     cp 4
@@ -243,102 +243,19 @@ noShapeMove
     sub 2
     ld (shape_row),a
     
-    jp drawShape
+    call drawShape
+    jp  preWaitloop
+
 storeIncrementedRotation    
     ld (rotationCount), a      
     ld a, (currentShapeOffset)
     add a, 6    
     ld (currentShapeOffset),a
+    call drawShape
+    jp  preWaitloop
     
-drawShape  
-    ld a, (shape_row_index)
-    add a, 10                  ; always need ten as the offset, the left right just adds bit to this   
-    ld (shape_row_index), a
-    
-    ld a, (currentShapeOffset)
-    ld hl, shapes
-    ld d, 0                            
-    ld e, a                            ; add the random (0 to 3) offset to hl to get value of shape
-    add hl, de
-    ld a, (hl)    
-    ld (currentShape), a
-    ; draw shape at next row    
-    ld hl, (DF_CC)
-    ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
-
-    ;; this will only draw shape at top need to add current position offset
-    add hl, de                          ; to where we want to draw shape
-    ld c, %10000000                     ; mask for shape (initialised, but will be rotated  )
-    
-    ;; alter loop counts when rotating so draw horizontal or vertical, not just vertical                                    l
-    ld a, (rotationCount)
-    and %00000001       ;; work out if rotation count is odd or even    
-    jr nz, drawHorizLoopCountSetup
-    ld e, 4
-    ld a, 2
-    ld (innerDrawLoopInit), a
-    ld a,10
-    ld (displayLineIncrement), a
-    sub 2
-    ld (displayOuterIncrement),a 
-    jr drawShapeOuter
-drawHorizLoopCountSetup
-    ld e, 2
-    ld a, 4         ; drawing horizontally 
-    ld (innerDrawLoopInit), a
-    ld a,8  
-    ld (displayLineIncrement), a
-    sub 2
-    ld (displayOuterIncrement),a 
-drawShapeOuter    
-    ld a, (innerDrawLoopInit)         
-    ld b, a             ; directly loading into b from memory fails?? MS byte not used error??
-drawShapeInner
-    ld a, (currentShape)    
-    and c                               ; set to block or no block based on (shapes)     
-    jp z, drawNothing
-    ; detect if hl is already drawn on (ie a block already in that location, if so stop
-    ;; we also need to draw the shape from the bottom upwards, because we want to detect the collision earlier
-    ;; and actually we should to a "trial draw of shape then if no collisions actually draw it!!
-    
-    push hl
-    ;ld de, (displayLineIncrement)
-    ld de, 10
-    add hl, de
-    ld a, (hl)
-    and SHAPE_CHAR_0                      ; this will result in "true" if block exists already in that position    
-    cp 0                                
-    pop hl
-                                        
-    jp z, drawTheDamnSquare             ; set a flag to say if move shape one more down will be collision
-    ld a, 1    
-    ld (flagForBottomHit), a
-    
-drawTheDamnSquare    
-    ld a, (currentShapeOffset)
-    and %00000011
-    cp 0
-    jp z, loadAlternateShape1
-    ld (hl), SHAPE_CHAR_0
-    jr drawNothing
-loadAlternateShape1
-    ld (hl), SHAPE_CHAR_1
-drawNothing
-    inc hl
-    xor a
-    ld a, c    
-    rra                                 ; rotate mask to right by one bit
-    ld c, a
-    djnz drawShapeInner                 ; dnjz decrements b and jumps if not zero
-    ld (outerCount), de                 ; store loop count temp
-    ld de, (displayOuterIncrement)    
-    add hl, de                          ; gets current screen position to next row
-    ld de, (outerCount)                 ; retreive  loop count temp
-    dec e   
-    ld a, e
-    cp 0  
-    jp nz, drawShapeOuter
-
+drawShapeHook    
+    call drawShape
 preWaitloop	
 	ld a, (score_mem_tens)
 	cp 153
@@ -362,7 +279,7 @@ printScoreInGame
     ld de, (currentShapeOffset)    
 	call printNumber    
 
-	ld bc, $1fff
+	ld bc, $0fff
 waitloop
     dec bc
     ld a,b
@@ -547,9 +464,104 @@ printNumber_loop
 	pop af ; retrieve original value of a
 	and $0f ; isolate the second digit
 	add a,$1c ; add 28 to the character code
-	ld (hl), a  
-    
+	ld (hl), a      
 	ret  
+
+drawShape  
+    ;ld bc, 45
+    ;ld de, (shape_row_index)
+    ;call printNumber
+    
+    
+    ld a, (shape_row_index)
+    add a, 10                  ; always need ten as the offset, the left right just adds bit to this   
+    ld (shape_row_index), a
+    
+    ld a, (currentShapeOffset)
+    ld hl, shapes
+    ld d, 0                            
+    ld e, a                            ; add the random (0 to 3) offset to hl to get value of shape
+    add hl, de
+    ld a, (hl)    
+    ld (currentShape), a
+    ; draw shape at next row    
+    ld hl, (DF_CC)
+    ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
+
+    ;; this will only draw shape at top need to add current position offset
+    add hl, de                          ; to where we want to draw shape
+    ld c, %10000000                     ; mask for shape (initialised, but will be rotated  )
+    
+    ;; alter loop counts when rotating so draw horizontal or vertical, not just vertical                                    l
+    ld a, (rotationCount)
+    and %00000001       ;; work out if rotation count is odd or even    
+    jr nz, drawHorizLoopCountSetup
+    ld e, 4
+    ld a, 2
+    ld (innerDrawLoopInit), a
+    ld a,10
+    ld (displayLineIncrement), a
+    sub 2
+    ld (displayOuterIncrement),a 
+    jr drawShapeOuter
+drawHorizLoopCountSetup
+    ld e, 2
+    ld a, 4         ; drawing horizontally 
+    ld (innerDrawLoopInit), a
+    ld a,8  
+    ld (displayLineIncrement), a
+    sub 2
+    ld (displayOuterIncrement),a 
+drawShapeOuter    
+    ld a, (innerDrawLoopInit)         
+    ld b, a             ; directly loading into b from memory fails?? MS byte not used error??
+drawShapeInner
+    ld a, (currentShape)    
+    and c                               ; set to block or no block based on (shapes)     
+    jp z, drawNothing
+    ; detect if hl is already drawn on (ie a block already in that location, if so stop
+    ;; we also need to draw the shape from the bottom upwards, because we want to detect the collision earlier
+    ;; and actually we should to a "trial draw of shape then if no collisions actually draw it!!
+    
+    push hl
+    ;ld de, (displayLineIncrement)
+    ld de, 10
+    add hl, de
+    ld a, (hl)
+    and SHAPE_CHAR_0                      ; this will result in "true" if block exists already in that position    
+    cp 0                                
+    pop hl
+                                        
+    jp z, drawTheDamnSquare             ; set a flag to say if move shape one more down will be collision
+    ld a, 1    
+    ld (flagForBottomHit), a
+    
+drawTheDamnSquare    
+    ld a, (currentShapeOffset)
+    and %00000011
+    cp 0
+    jp z, loadAlternateShape1
+    ld (hl), SHAPE_CHAR_0
+    jr drawNothing
+loadAlternateShape1
+    ld (hl), SHAPE_CHAR_1
+drawNothing
+    inc hl
+    xor a
+    ld a, c    
+    rra                                 ; rotate mask to right by one bit
+    ld c, a
+    djnz drawShapeInner                 ; dnjz decrements b and jumps if not zero
+    ld (outerCount), de                 ; store loop count temp
+    ld de, (displayOuterIncrement)    
+    add hl, de                          ; gets current screen position to next row
+    ld de, (outerCount)                 ; retreive  loop count temp
+    dec e   
+    ld a, e
+    cp 0  
+    jp nz, drawShapeOuter
+    
+    ret    
 
    
 #include "line2.asm"

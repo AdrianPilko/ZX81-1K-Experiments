@@ -4,11 +4,13 @@ del *.p
 del *.lst
 del *.sym
 
-call zxasm chessBoard
-call zxasm tetris
+REM call zxasm chessBoard
+REM call zxasm tetris
+call zxasm tetris16K
 
 REM call will auto run emulator EightyOne if installed
 REM comment in or out usin rem which one to run
 
 REM call chessBoard.p
-call tetris.p
+REM call tetris.p
+call tetris16K.p

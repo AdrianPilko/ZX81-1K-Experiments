@@ -103,6 +103,10 @@ score_mem_hund
 	DEFB 0	    
 score_mem_tens
 	DEFB 0    
+deleteShapeFlag
+    DEFB 0
+speedUp
+    DEFB 0
 ;; intro screen
 intro_title    
 	; screenTetris.asm has already set everything including the title
@@ -120,6 +124,9 @@ initPlayAreaLoop
     ld (initScreenIndex),a    
     pop bc
     djnz initPlayAreaLoop
+
+    ld a, $df
+    ld (speedUp),a
     
 ;; main game loop
 main
@@ -131,7 +138,8 @@ main
     ld (shape_row_index),a
     ld a, 0
     ld (flagForBottomHit), a    
-    ld (rotationCount), a           
+    ld (rotationCount), a    
+
    
 tryAnotherR                             ; generate random number to index shape memory
     ld a, r                             ; we want a number 0 to 4 inclusive 
@@ -144,49 +152,12 @@ dropLoop                                ; delete old shape move current shape do
 
   
 deleteOldShape
-    ;before we add to shape row index we need to delete the current shape position
-    ld hl, (DF_CC)
-    ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
-    ;; this will only draw shape at top need to add current position offset
-    add hl, de                          ; to where we want to draw shape
+    ld a, 1
+    ld (deleteShapeFlag),a          ;  drawShape checks this flag to see if is deleting 
+    call drawShape
+    ld a, 0
+    ld (deleteShapeFlag),a          ;  clear the flag
     
-    
- ;; alter loop counts when rotating so draw horizontal or vertical, not just vertical                                    l
-    ld a, (rotationCount)
-    and %00000001       ;; work out if rotation count is odd or even    
-    jr nz, drawDeleteHorizLoopCountSetup
-    ld e, 4
-    ld a, 2
-    ld (innerDrawLoopInit), a
-    ld a,10
-    ld (displayLineIncrement), a
-    sub 2
-    ld (displayOuterIncrement),a     
-    jr deleteOldShapeLoopOuter
-drawDeleteHorizLoopCountSetup
-    ld e, 2
-    ld a, 4
-    ld (innerDrawLoopInit), a
-    ld a,8
-    ld (displayLineIncrement), a
-    sub 2
-    ld (displayOuterIncrement),a 
-deleteOldShapeLoopOuter        
-    ld a, (innerDrawLoopInit)         
-    ld b, a             ; directly loading into b from memory fails?? MS byte not used error??    
-deleteOldShapeLoopInner
-    ld (hl), 0
-    inc hl
-    djnz deleteOldShapeLoopInner                 ; dnjz decrements b and jumps if not zero
-    ld (outerCount), de                 ; store loop count temp
-    ld de, (displayOuterIncrement)    
-    add hl, de                          ; gets current screen position to next row
-    ld de, (outerCount)                 ; retreive  loop count temp
-    dec e   
-    ld a, e
-    cp 0  
-    jp nz, deleteOldShapeLoopOuter
-   
     ; read the keyboard input and adust the offset     
 	ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
 	in a, (KEYBOARD_READ_PORT)					; read from io port	
@@ -266,7 +237,7 @@ addOneToHund
 	ld (score_mem_tens), a
     ld a, (score_mem_hund)             
 	add a, 1
-	daa
+	daa    
 	ld (score_mem_hund), a
 skipAddHund	
 
@@ -275,11 +246,17 @@ printScoreInGame
     ld de, score_mem_tens
 	call printNumber    
     
-	ld bc, 4            ; print the current shape    
-    ld de, (currentShapeOffset)    
+	ld bc, 4            ; print the current difficulty level (lower number is harder)
+    ld de, speedUp    
 	call printNumber    
 
-	ld bc, $0fff
+    	
+    ld bc, (speedUp) 
+    ld hl, $0fff
+    adc hl, bc
+    push hl
+    pop bc
+   
 waitloop
     dec bc
     ld a,b
@@ -346,6 +323,9 @@ removelineIsComplete
     push de    
     push bc
 
+    ld a, (speedUp)     ;; increase difficulty with each line removed
+    dec a
+    ld (speedUp),a
 
     ld a,(score_mem_tens)				; add one to score, scoring is binary coded decimal (BCD)
 	add a,1	
@@ -468,14 +448,18 @@ printNumber_loop
 	ret  
 
 drawShape  
-    ;ld bc, 45
-    ;ld de, (shape_row_index)
-    ;call printNumber
-    
+        ;ld bc, 45
+        ;ld de, (shape_row_index)
+        ;call printNumber    
+    ld a,(deleteShapeFlag)     
+    cp 1
+    jp z, dontIncrementShapeRowIndex    ;; if we're deleting shape then skip increment shape_row_index
     
     ld a, (shape_row_index)
     add a, 10                  ; always need ten as the offset, the left right just adds bit to this   
     ld (shape_row_index), a
+
+dontIncrementShapeRowIndex
     
     ld a, (currentShapeOffset)
     ld hl, shapes
@@ -533,18 +517,30 @@ drawShapeInner
     pop hl
                                         
     jp z, drawTheDamnSquare             ; set a flag to say if move shape one more down will be collision
+       
+    ld a, (deleteShapeFlag)     ;; if we're deleting the old shape then don't trigger collision
+    cp 1
+    jp z, drawTheDamnSquare
     ld a, 1    
     ld (flagForBottomHit), a
     
 drawTheDamnSquare    
+    ld a,(deleteShapeFlag)     ;; if we're deleting the old shape then don't draw anything
+    cp 1
+    jp z, loadBlank
+    
     ld a, (currentShapeOffset)
     and %00000011
     cp 0
-    jp z, loadAlternateShape1
+    jp z, loadAlternateShape1    
     ld (hl), SHAPE_CHAR_0
     jr drawNothing
+    
 loadAlternateShape1
     ld (hl), SHAPE_CHAR_1
+    jr drawNothing
+loadBlank
+    ld (hl), 0      ; this clears the block with space
 drawNothing
     inc hl
     xor a

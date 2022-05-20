@@ -48,23 +48,25 @@ currentShape
 shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shape
             ; base shape 2 column * 4 rows to make logic easier, interpreted as such in the code and definition 
             ;  "square"   "L"    "straight"   "T"  "skew left" "skew right"
-            ;       00     00       10        00     00          00   
-            ;       00     10       10        01     10          01   
-            ;       11     10       10        11     11          11    
-            ;       11     11       10        01     01          10    
+            ;       00     00       10        00     00          00      
+            ;       00     10       10        01     10          01      
+            ;       11     10       10        11     11          11      
+            ;       11     11       10        01     01          10      
 
 ; shape definition (bit packed)
 ;        square       L R/L   straight     T L/R   skew L   skew R
-   DEFB %00001111,  %00101011,%10101010,%00011101,%00101101, %00011110   ; should be drawn vertically
-   DEFB %01100110,  %00101110,%00001111,%11100100,%01101100, %11000110   ; should be drawn horiz
-   DEFB %00001111,  %11010100,%10101010,%10111000,%10110100, %00011110   ; should be drawn vertically
-   DEFB %01100110,  %11101000,%00001111,%01001110,%01101100, %11000110   ; should be drawn horiz   
+   DEFB %00111100,  %00101011,%10101010,%00011101,%00101101, %00011110   ; should be drawn vertically
+   DEFB %11001100,  %00101110,%00001111,%11100100,%01101100, %11000110   ; should be drawn horiz
+   DEFB %00111100,  %11010100,%10101010,%10111000,%10110100, %00011110   ; should be drawn vertically
+   DEFB %11001100,  %11101000,%00001111,%01001110,%01101100, %11000110   ; should be drawn horiz   
 
 ;   DEFB             %00010111,           %00101110,    
 
 screen_area_blank_txt
 	DEFB	__,__,__,__,__,__,__,$ff
-    
+
+waitLoopDropFasterFlag
+    DEFB 0
 shape_row_index     ; the current row of the top of the falling shape
     DEFB 0
 shape_col_index     ; the current column of the top left of the falling shape
@@ -152,6 +154,9 @@ tryAnotherR                             ; generate random number to index shape 
     jp nc, tryAnotherR                  ; loop when nc flag set ie not less than 5 try again    
     ld (currentShapeOffset), a
 
+    xor a
+    ld (waitLoopDropFasterFlag),a
+
 ; read keyboard input, delete old shape move current shape down one
 dropLoop                                
     ld a, 1
@@ -170,6 +175,17 @@ dropLoop
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 2, a									; check bit set for key press right (M)
     jr z, shapeRight							; jump to move shape right	
+
+
+    ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard space to B
+    in a, (KEYBOARD_READ_PORT)					; read from io port		
+    bit 3, a									; check bit set for key press right (C)
+    jr z, dropShapeAllTheWay                    ; causes wait loop to be zero when C pressed
+    jp noShapeMove								; dropped through to no move
+    
+dropShapeAllTheWay    
+    ld a, 1
+    ld (waitLoopDropFasterFlag), a
     jp noShapeMove								; dropped through to no move
 
 shapeRight
@@ -328,10 +344,18 @@ printScoreInGame
         
     ld bc, (speedUp) 
     ld hl, $0fff
+    ld a, (waitLoopDropFasterFlag)
+    cp 0
+    jp z,dropNormalSpeed
+
+    ld bc, $0000      ; set to zero no wait, drop fast 
+    ld hl, $0002
+    
+dropNormalSpeed     
     adc hl, bc
     push hl
     pop bc
-   
+  
 waitloop
     dec bc
     ld a,b
@@ -350,7 +374,7 @@ waitloop
     jp nz, dropLoop
     jp main                   
        
-checkForCompleteLinesInit   
+checkForCompleteLinesInit    
     ld a, 11                        ; offset to first block in screen play area 
     ld (checkColOffsetStartRow), a    
     ld a, 1

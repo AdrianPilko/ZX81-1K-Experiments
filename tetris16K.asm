@@ -52,6 +52,7 @@ shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shap
             ;       00     10       10        01     10          01   
             ;       11     10       10        11     11          11    
             ;       11     11       10        01     01          10    
+
 ; shape definition (bit packed)
 ;        square       L R/L   straight     T L/R   skew L   skew R
    DEFB %00001111,  %00101011,%10101010,%00011101,%00101101, %00011110   ; should be drawn vertically
@@ -139,7 +140,7 @@ main
     ld (shapeTrackLeftRight),a     
     ld a, 13
     ld (shape_row_index),a
-    ld a, 0
+    xor a
     ld (flagForBottomHit), a    
     ld (rotationCount), a    
 
@@ -150,15 +151,13 @@ tryAnotherR                             ; generate random number to index shape 
     cp 6    
     jp nc, tryAnotherR                  ; loop when nc flag set ie not less than 5 try again    
     ld (currentShapeOffset), a
-    
-dropLoop                                ; delete old shape move current shape down one
 
-  
-deleteOldShape
+; read keyboard input, delete old shape move current shape down one
+dropLoop                                
     ld a, 1
     ld (deleteShapeFlag),a          ;  drawShape checks this flag to see if is deleting 
     call drawShape
-    ld a, 0
+    xor a                           ;  xor a is always zero and saves 1 byte compared to ld a, 0
     ld (deleteShapeFlag),a          ;  clear the flag
 
     ; read the keyboard input and adust the offset     

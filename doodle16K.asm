@@ -36,8 +36,10 @@ shapeCol
     DEFB 0
 shapeSet
     DEFB SHAPE_CHAR_0
-;forByteAlignment   
-;    DEFB 0
+shapeOnFlag
+    DEFB 0
+movedFlag   
+    DEFB 0
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp initVariables		; main entry poitn to the code ships the memory definitions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -48,14 +50,24 @@ initVariables
     ld (shapeRow),a
     ld a, 10
     ld (shapeCol),a
-main    
+    
+    ld a,(shapeRow)
+	ld h, a				; row set for PRINTAT
+    ld a, (shapeCol)
+    ld l, a				; row set for PRINTAT
+    push hl
+    pop bc
+    call PRINTAT		; ROM routine to set current cursor position, from row b and column e    
+main
+    xor a
+    ld (movedFlag), a    
    ; read the keyboard input and adust the offset     
-    ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
+    ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			
     in a, (KEYBOARD_READ_PORT)					; read from io port	
     bit 1, a
     ; check bit set for key press left  (Z)
-    jp z, drawLeft								; jump to move shape left
-    ld a, KEYBOARD_READ_PORT_SPACE_TO_B			; read keyboard space to B
+    jp z, drawLeft								
+    ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 2, a						    ; Z
     jr z, drawRight							    ; jump to move shape right	
@@ -67,23 +79,28 @@ main
     jr z, drawUp	
     
 
-    ld a, KEYBOARD_READ_PORT_SPACE_TO_B			; read keyboard space to B
+    ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 3, a					; N
     jr z, drawDown	    
 
-    ld a, KEYBOARD_READ_PORT_SPACE_TO_B			; read keyboard space to B
+    ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 0, a					; SPACE
     jr z, switchShapeOff	    
 
-    ld a, KEYBOARD_READ_PORT_SPACE_TO_B			; read keyboard space to B
+    ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 1, a			; .
     jr z, switchShapeOn	
+
+    xor a
+    ld (movedFlag), a
     
     jp drawBlock
-drawLeft    
+drawLeft   
+    ld a, 1
+    ld (movedFlag), a
     ld a, (shapeCol)         
     dec a    
     cp 0
@@ -91,6 +108,8 @@ drawLeft
     ld (shapeCol),a
     jp drawBlock
 drawRight
+    ld a, 1
+    ld (movedFlag), a
     ld a, (shapeCol)         
     inc a
     cp 31
@@ -98,6 +117,8 @@ drawRight
     ld (shapeCol),a    
     jp drawBlock
 drawUp
+    ld a, 1
+    ld (movedFlag), a
     ld a, (shapeRow)         
     dec a    
     cp 0
@@ -105,7 +126,9 @@ drawUp
     ld (shapeRow),a
     jp drawBlock
 drawDown
-    ld a, (shapeRow)         
+    ld a, 1
+    ld (movedFlag), a
+    ld a, (shapeRow)    
     inc a
     cp 22
     jp z, drawBlock
@@ -115,23 +138,41 @@ drawDown
 switchShapeOff
     ld a, SHAPE_CHAR_NO_PRINT 
     ld (shapeSet), a 
+    ld a, 0
+    ld (shapeOnFlag), a 
     jp drawBlock
     
 switchShapeOn
     ld a, SHAPE_CHAR_0 
     ld (shapeSet), a 
+    ld a, 0
+    ld (shapeOnFlag), a     
     jp drawBlock
     
 drawBlock
+    ld hl, (PR_CC)      ; else check if there was a shape there before
+    ld a, (hl)
+    and SHAPE_CHAR_0
+    jp z, restoreCurrentPositionBlock
+    
+    jp putBlankThere 
+    
+restoreCurrentPositionBlock
+    ld hl, (PR_CC)
+    ld (hl), SHAPE_CHAR_0
+    jp moveCursor
+putBlankThere
+    ld hl, (PR_CC)
+    ld (hl), 0 
+moveCursor   
     ld a,(shapeRow)
 	ld h, a				; row set for PRINTAT
     ld a, (shapeCol)
     ld l, a				; row set for PRINTAT
     push hl
     pop bc
-   
-	call PRINTAT		; ROM routine to set current cursor position, from row b and column e
-
+    call PRINTAT		; ROM routine to set current cursor position, from row b and column e
+drawIt    
     ld a, (shapeSet)
     call PRINT 
   

@@ -1,9 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;
-;;; zx81 16K code for a simple doodle program where you just move the pen around the screen
-;;; was aiming to have the two grey colours and pen on off function too
+;;; zx81 16K code 
+;;; It's a clone of snake (in case that wasn't clear from filename;)
 ;;;;;;;;;;;;;;;;;;;;;
-
-
 
 ; all the includes came from  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
 #include "zx81defs.asm" 
@@ -30,8 +28,10 @@ shapeSet
     DEFB SHAPE_CHAR_0
 shapeOnFlag
     DEFB 0
-movedFlag   
-    DEFB 0
+movedFlag
+    DEFB 5      ; default to stationary , 0 = left, 1 = right, 2 = up, 3 = down
+absoluteScreenMemoryPosition
+    DEFB 0,0    
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp initVariables		; main entry poitn to the code ships the memory definitions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -40,20 +40,19 @@ initVariables
     
     ld a, 10
     ld (shapeRow),a
-    ld a, 10
+    ld h, a				; row set for PRINTAT       
+    ld a, 15
     ld (shapeCol),a
-    
-    ld a,(shapeRow)
-	ld h, a				; row set for PRINTAT
-    ld a, (shapeCol)
-    ld l, a				; row set for PRINTAT
+    ld l, a				; row set for PRINTAT    
     push hl
     pop bc
     call PRINTAT		; ROM routine to set current cursor position, from row b and column e    
+    
+    ld a, 5
+    ld (movedFlag),a
+
 main
-    xor a
-    ld (movedFlag), a    
-   ; read the keyboard input and adust the offset     
+    ; read the keyboard input and adust the offset     
     ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			
     in a, (KEYBOARD_READ_PORT)					; read from io port	
     bit 1, a
@@ -64,40 +63,39 @@ main
     bit 2, a						    ; Z
     jr z, drawRight							    ; jump to move shape right	
 
-
     ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 2, a					        ; X
     jr z, drawUp	
     
-
     ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 3, a					; N
     jr z, drawDown	    
 
-    ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
-    in a, (KEYBOARD_READ_PORT)					; read from io port		
-    bit 0, a					; SPACE
-    jr z, switchShapeOff	    
-
-    ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
-    in a, (KEYBOARD_READ_PORT)					; read from io port		
-    bit 1, a			; .
-    jr z, switchShapeOn	
-
-    xor a
-    ld (movedFlag), a
-    
+    ;;; keep moving in same direction even if no key pressed
+    ld a, (movedFlag)
+    cp 0
+    jp z, drawLeft
+    cp 1
+    jp z, drawRight
+    cp 2
+    jp z, drawUp
+    cp 3
+    jp z, drawDown
+ 
     jp drawBlock
 drawLeft   
-    ld a, 1
+    ld a, 0
     ld (movedFlag), a
     ld a, (shapeCol)         
     dec a    
     cp 0
     jp z, drawBlock    
     ld (shapeCol),a
+    ld hl, (absoluteScreenMemoryPosition)
+    dec hl    
+    ld (absoluteScreenMemoryPosition), hl        
     jp drawBlock
 drawRight
     ld a, 1
@@ -107,60 +105,46 @@ drawRight
     cp 31
     jp z, drawBlock
     ld (shapeCol),a    
+    ld hl, (absoluteScreenMemoryPosition)
+    inc hl
+    ld (absoluteScreenMemoryPosition), hl
     jp drawBlock
 drawUp
-    ld a, 1
+    ld a, 2
     ld (movedFlag), a
     ld a, (shapeRow)         
     dec a    
     cp 0
     jp z, drawBlock    
     ld (shapeRow),a
+    ld hl, (absoluteScreenMemoryPosition)
+    ld a, l
+    sub a,33
+    ld (absoluteScreenMemoryPosition), hl    
     jp drawBlock
 drawDown
-    ld a, 1
+    ld a, 3
     ld (movedFlag), a
     ld a, (shapeRow)    
     inc a
     cp 22
     jp z, drawBlock
     ld (shapeRow),a
-    jp drawBlock
-
-switchShapeOff
-    ld a, SHAPE_CHAR_NO_PRINT 
-    ld (shapeSet), a 
-    ld a, 0
-    ld (shapeOnFlag), a 
-    jp drawBlock
+    ld hl, (absoluteScreenMemoryPosition)
+    add hl, 33
+    ld (absoluteScreenMemoryPosition), hl
     
-switchShapeOn
-    ld a, SHAPE_CHAR_0 
-    ld (shapeSet), a 
-    ld a, 0
-    ld (shapeOnFlag), a     
     jp drawBlock
     
 drawBlock
-    ld hl, (PR_CC)      ; else check if there was a shape there before
-    ld a, (hl)
-    and SHAPE_CHAR_0
-    jp z, restoreCurrentPositionBlock
-    
-    jp putBlankThere 
-    
-restoreCurrentPositionBlock
-    ld hl, (PR_CC)
-    ld (hl), SHAPE_CHAR_0
-    jp moveCursor
-putBlankThere
-    ld hl, (PR_CC)
-    ld (hl), 0 
-moveCursor   
     ld a,(shapeRow)
 	ld h, a				; row set for PRINTAT
     ld a, (shapeCol)
     ld l, a				; row set for PRINTAT
+    
+    ; we need to check current cursor position for existing block
+        
+    
     push hl
     pop bc
     call PRINTAT		; ROM routine to set current cursor position, from row b and column e

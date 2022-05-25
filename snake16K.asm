@@ -29,9 +29,11 @@ shapeSet
 shapeOnFlag
     DEFB 0
 movedFlag
-    DEFB 5      ; default to stationary , 0 = left, 1 = right, 2 = up, 3 = down
+    DEFB 0      ; default to stationary = 0, 1 = left, 2 = right, 3 = up, 4 = down
 absoluteScreenMemoryPosition
     DEFB 0,0    
+firstTimeFlag
+    DEFB 1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp initVariables		; main entry poitn to the code ships the memory definitions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -50,6 +52,9 @@ initVariables
     
     ld a, 5
     ld (movedFlag),a
+    ld hl, 345
+    ld (absoluteScreenMemoryPosition), hl
+    
 
 main
     ; read the keyboard input and adust the offset     
@@ -75,18 +80,18 @@ main
 
     ;;; keep moving in same direction even if no key pressed
     ld a, (movedFlag)
-    cp 0
-    jp z, drawLeft
     cp 1
-    jp z, drawRight
+    jp z, drawLeft
     cp 2
-    jp z, drawUp
+    jp z, drawRight
     cp 3
+    jp z, drawUp
+    cp 4
     jp z, drawDown
  
     jp drawBlock
 drawLeft   
-    ld a, 0
+    ld a, 1
     ld (movedFlag), a
     ld a, (shapeCol)         
     dec a    
@@ -98,7 +103,7 @@ drawLeft
     ld (absoluteScreenMemoryPosition), hl        
     jp drawBlock
 drawRight
-    ld a, 1
+    ld a, 2
     ld (movedFlag), a
     ld a, (shapeCol)         
     inc a
@@ -110,7 +115,7 @@ drawRight
     ld (absoluteScreenMemoryPosition), hl
     jp drawBlock
 drawUp
-    ld a, 2
+    ld a, 3
     ld (movedFlag), a
     ld a, (shapeRow)         
     dec a    
@@ -118,12 +123,15 @@ drawUp
     jp z, drawBlock    
     ld (shapeRow),a
     ld hl, (absoluteScreenMemoryPosition)
-    ld a, l
-    sub a,33
+    xor a
+    push hl
+    pop bc
+    ld de, 32    
+    sbc hl,de
     ld (absoluteScreenMemoryPosition), hl    
     jp drawBlock
 drawDown
-    ld a, 3
+    ld a, 4
     ld (movedFlag), a
     ld a, (shapeRow)    
     inc a
@@ -131,19 +139,34 @@ drawDown
     jp z, drawBlock
     ld (shapeRow),a
     ld hl, (absoluteScreenMemoryPosition)
-    add hl, 33
+    ld bc, 32
+    add hl, bc
     ld (absoluteScreenMemoryPosition), hl
     
     jp drawBlock
     
 drawBlock
+    ; we need to check cursor position we've moved to for and existing block 
+    ; not on first time throught though when not moved   
+    ld a, (movedFlag)
+    cp 0
+    jp nz, noCheck
+    
+    ld hl, DF_CC
+    ld bc, (absoluteScreenMemoryPosition)
+    add hl, bc
+    ld a, (hl)
+    and SHAPE_CHAR_0  
+    jp z, gameOver
+
+noCheck
+    
     ld a,(shapeRow)
 	ld h, a				; row set for PRINTAT
     ld a, (shapeCol)
     ld l, a				; row set for PRINTAT
     
-    ; we need to check current cursor position for existing block
-        
+    
     
     push hl
     pop bc
@@ -152,7 +175,7 @@ drawIt
     ld a, (shapeSet)
     call PRINT 
   
-    ld hl, $0fff
+    ld hl, $03ff
     push hl
     pop bc
   
@@ -162,7 +185,9 @@ waitloop
     or c
     jr nz, waitloop    
     jp main
-   
+  
+gameOver
+    ret
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
 printstring
     ld hl,(DF_CC)

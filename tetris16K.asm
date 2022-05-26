@@ -3,14 +3,8 @@
 ;;; It's a clone of tetris (in case that wasn't clear from filename;)
 ;;; The code heavily!! dependant on the definition of the screen memory in screenTetris.asm
 ;;;;;;;;;;;;;;;;;;;;;
-;;; as of 16/5/2022 size of assembled p file is 934bytes (has to be < 950 ish)
 
-; TODO  
-;   scoring
-;   side to side collision detect
-;   speed up game each time line removed
-;   the delete old shape needs to use the proper shape definition, not overwrite 8 blocks
-;   straight shape doesn't go all way to left, due to wayit's defined and drawn
+; TODO  / bugs
 ;   when shape next to edge no logic to prevent rotation, so sticks to wall or worse goes through
 
 ; all the includes came from  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40

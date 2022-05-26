@@ -75,12 +75,11 @@ main
     ; read the keyboard input and adust the offset     
     ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			
     in a, (KEYBOARD_READ_PORT)					; read from io port	
-    bit 1, a
-    ; check bit set for key press left  (Z)
+    bit 1, a                            ; Z
     jp z, drawLeft								
     ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
-    bit 2, a						    ; Z
+    bit 2, a						    ; M
     jp z, drawRight							    ; jump to move shape right	
 
     ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			
@@ -90,7 +89,7 @@ main
     
     ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
-    bit 3, a					; N
+    bit 3, a					        ; N
     jp z, drawDown	    
 
     ;;; keep moving in same direction even if no key pressed

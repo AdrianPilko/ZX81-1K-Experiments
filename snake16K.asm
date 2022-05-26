@@ -20,6 +20,9 @@
 #define SHAPE_CHAR_0   128        ; black square
 #define SHAPE_CHAR_NO_PRINT   136        ; black square
 
+game_over_txt
+	DEFB	_G,_A,_M,_E,__,_O,_V,_E,_R,$ff 
+    
 shapeRow 
     DEFB 0
 shapeCol     
@@ -50,10 +53,16 @@ initVariables
     pop bc
     call PRINTAT		; ROM routine to set current cursor position, from row b and column e    
     
-    ld a, 5
+    ld a, 0
     ld (movedFlag),a
-    ld hl, 345
+    
+    ld hl, Display
+    ld de, 346
+    add hl, de
+    ld (hl), _B
     ld (absoluteScreenMemoryPosition), hl
+    
+    
     
 
 main
@@ -111,7 +120,7 @@ drawRight
     jp z, drawBlock
     ld (shapeCol),a    
     ld hl, (absoluteScreenMemoryPosition)
-    inc hl
+    inc hl    
     ld (absoluteScreenMemoryPosition), hl
     jp drawBlock
 drawUp
@@ -126,7 +135,7 @@ drawUp
     xor a
     push hl
     pop bc
-    ld de, 32    
+    ld de, 33    
     sbc hl,de
     ld (absoluteScreenMemoryPosition), hl    
     jp drawBlock
@@ -139,7 +148,7 @@ drawDown
     jp z, drawBlock
     ld (shapeRow),a
     ld hl, (absoluteScreenMemoryPosition)
-    ld bc, 32
+    ld bc, 33
     add hl, bc
     ld (absoluteScreenMemoryPosition), hl
     
@@ -150,14 +159,14 @@ drawBlock
     ; not on first time throught though when not moved   
     ld a, (movedFlag)
     cp 0
-    jp nz, noCheck
+    jp z, noCheck
+
+    ld hl, (absoluteScreenMemoryPosition)
+    ;ld (hl), _A        ; debug to see where we think absoluteScreenMemoryPosition is
     
-    ld hl, DF_CC
-    ld bc, (absoluteScreenMemoryPosition)
-    add hl, bc
     ld a, (hl)
-    and SHAPE_CHAR_0  
-    jp z, gameOver
+    and SHAPE_CHAR_0    
+    jp nz, gameOver
 
 noCheck
     
@@ -175,7 +184,7 @@ drawIt
     ld a, (shapeSet)
     call PRINT 
   
-    ld hl, $03ff
+    ld hl, $0fff
     push hl
     pop bc
   
@@ -187,10 +196,13 @@ waitloop
     jp main
   
 gameOver
+    ld bc,334
+    ld de,game_over_txt   
+    call printstring	
     ret
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
 printstring
-    ld hl,(DF_CC)
+    ld hl,Display
     add hl,bc	
 printstring_loop
     ld a,(de)
@@ -204,7 +216,7 @@ printstring_end
     ret  
 
 printNumber
-    ld hl,(DF_CC)
+    ld hl,Display
     add hl,bc	
 printNumber_loop
     ld a,(de)

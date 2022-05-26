@@ -22,7 +22,10 @@
 
 game_over_txt
 	DEFB	_G,_A,_M,_E,__,_O,_V,_E,_R,$ff 
-    
+;first_line_a
+;    DEFB _L,_E,_F,_T,__,_Z,__,_R,_I,_G,_H,_T,$ff 
+;first_line_b    
+;    DEFB __,_M,__,_U,_P,__,_X,__,_D,_O,_W,_N,__,_N,$ff 
 shapeRow 
     DEFB 0
 shapeCol     
@@ -36,12 +39,16 @@ movedFlag
 absoluteScreenMemoryPosition
     DEFB 0,0    
 firstTimeFlag
-    DEFB 1
+    DEFB 1    
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp initVariables		; main entry poitn to the code ships the memory definitions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 initVariables
+    call CLS 
+  ;  ld bc,3
+ ;   ld de,first_line_a
+ ;   call printstring
     
     ld a, 10
     ld (shapeRow),a
@@ -59,7 +66,6 @@ initVariables
     ld hl, Display
     ld de, 346
     add hl, de
-    ld (hl), _B
     ld (absoluteScreenMemoryPosition), hl
     
     
@@ -75,17 +81,17 @@ main
     ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 2, a						    ; Z
-    jr z, drawRight							    ; jump to move shape right	
+    jp z, drawRight							    ; jump to move shape right	
 
     ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 2, a					        ; X
-    jr z, drawUp	
+    jp z, drawUp	
     
     ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 3, a					; N
-    jr z, drawDown	    
+    jp z, drawDown	    
 
     ;;; keep moving in same direction even if no key pressed
     ld a, (movedFlag)
@@ -105,22 +111,40 @@ drawLeft
     ld a, (shapeCol)         
     dec a    
     cp 0
-    jp z, drawBlock    
+    jp z, wrapToRight    
     ld (shapeCol),a
     ld hl, (absoluteScreenMemoryPosition)
     dec hl    
     ld (absoluteScreenMemoryPosition), hl        
     jp drawBlock
+wrapToRight
+    ld a, 31
+    ld (shapeCol),a
+    ld hl, (absoluteScreenMemoryPosition)
+    ld de, 30
+    add hl, de
+    ld (absoluteScreenMemoryPosition), hl
+    jp drawBlock
+    
 drawRight
     ld a, 2
     ld (movedFlag), a
     ld a, (shapeCol)         
     inc a
     cp 31
-    jp z, drawBlock
+    jp z, wrapToLeft     ; we need to wrap to other side of screen, ioe take 31 off
     ld (shapeCol),a    
     ld hl, (absoluteScreenMemoryPosition)
     inc hl    
+    ld (absoluteScreenMemoryPosition), hl    
+    jp drawBlock
+    
+wrapToLeft    
+    xor a
+    ld (shapeCol),a
+    ld hl, (absoluteScreenMemoryPosition)
+    ld de, 30
+    sbc hl, de
     ld (absoluteScreenMemoryPosition), hl
     jp drawBlock
 drawUp
@@ -196,10 +220,20 @@ waitloop
     jp main
   
 gameOver
-    ld bc,334
+    ld bc,340
     ld de,game_over_txt   
     call printstring	
-    ret
+
+    ld hl, $ffff
+    push hl
+    pop bc
+  
+waitloop_endGame
+    dec bc
+    ld a,b
+    or c
+    jr nz, waitloop_endGame      
+    jp initVariables
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
 printstring
     ld hl,Display

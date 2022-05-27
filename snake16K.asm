@@ -44,8 +44,8 @@ firstTimeFlag
 	jp initVariables		; main entry poitn to the code ships the memory definitions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-initVariables
-    call CLS 
+initVariables    
+    call drawInitialScreen
   ;  ld bc,3
  ;   ld de,first_line_a
  ;   call printstring
@@ -267,7 +267,39 @@ printNumber_loop
     add a,$1c ; add 28 to the character code
     ld (hl), a      
     ret  
+    
+drawInitialScreen    
+    ;; draw boarder for the play area consisting of inverse xcharacter decinaml 189
+    call CLS
 
+    ld de, 0
+    ld (absoluteScreenMemoryPosition), de    
+drawLineZeroAndLast
+    ld hl, Display+1    
+    add hl, de    
+    ld (hl), 189
+    push de
+    ld de, 726
+    add hl, de    
+    ld (hl), 189   
+    pop de
+    inc de
+    ld a, 32
+    cp e
+    jp nz, drawLineZeroAndLast
+
+    ld b, 22            ;; best way to just draw column down each side of screen
+    ld de, 31
+    ld hl, Display+1
+drawColZero      
+    ld (hl), 189          
+    add hl, de  
+    ld (hl), 189    
+    inc hl    
+    inc hl
+    djnz drawColZero
+
+    ret
    
 #include "line2.asm"
 #include "screenFull.asm"      			; definition of the screen memory, in colapsed version for 1K        

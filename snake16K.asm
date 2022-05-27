@@ -43,10 +43,17 @@ firstTimeFlag
 ; the snake can grow to a maximum length of 16 so store 16 row and column positions
 ; to enable it to be undrawn as it moves around. will increase once code works
 ; when we use these we will optimise by index offset of 16 as contiguous in memory
+
+; the intention is to delete (on screen) the tail of the snake (which i'm saying is the zero index) 
+; shuffle all the coords down by one, then set the 15th index (counting from zero) to the new shap 
+; position and then draw that.
+
+;; eventually we'll add code to make the snake longer when items are collected (eaten), and in that case
+;; we'll have to store a tail index
 snakeCoordsRow    
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-snakeCoordsCol    
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
+    DEFB 10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10
+snakeCoordsCol            
+    DEFB 3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp initVariables		; main entry poitn to the code ships the memory definitions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

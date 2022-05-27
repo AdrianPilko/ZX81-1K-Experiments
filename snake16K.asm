@@ -39,7 +39,14 @@ movedFlag
 absoluteScreenMemoryPosition
     DEFB 0,0    
 firstTimeFlag
-    DEFB 1    
+    DEFB 1   
+; the snake can grow to a maximum length of 16 so store 16 row and column positions
+; to enable it to be undrawn as it moves around. will increase once code works
+; when we use these we will optimise by index offset of 16 as contiguous in memory
+snakeCoordsRow    
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+snakeCoordsCol    
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp initVariables		; main entry poitn to the code ships the memory definitions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -110,19 +117,11 @@ drawLeft
     ld a, (shapeCol)         
     dec a    
     cp 0
-    jp z, wrapToRight    
+    jp z, drawBlock    
     ld (shapeCol),a
     ld hl, (absoluteScreenMemoryPosition)
     dec hl    
     ld (absoluteScreenMemoryPosition), hl        
-    jp drawBlock
-wrapToRight
-    ld a, 31
-    ld (shapeCol),a
-    ld hl, (absoluteScreenMemoryPosition)
-    ld de, 30
-    add hl, de
-    ld (absoluteScreenMemoryPosition), hl
     jp drawBlock
     
 drawRight
@@ -131,21 +130,13 @@ drawRight
     ld a, (shapeCol)         
     inc a
     cp 31
-    jp z, wrapToLeft     ; we need to wrap to other side of screen, ioe take 31 off
+    jp z, drawBlock     ; we need to wrap to other side of screen, ioe take 31 off
     ld (shapeCol),a    
     ld hl, (absoluteScreenMemoryPosition)
     inc hl    
     ld (absoluteScreenMemoryPosition), hl    
-    jp drawBlock
+    jp drawBlock  
     
-wrapToLeft    
-    xor a
-    ld (shapeCol),a
-    ld hl, (absoluteScreenMemoryPosition)
-    ld de, 30
-    sbc hl, de
-    ld (absoluteScreenMemoryPosition), hl
-    jp drawBlock
 drawUp
     ld a, 3
     ld (movedFlag), a
@@ -219,7 +210,7 @@ waitloop
     jp main
   
 gameOver
-    ld bc,340
+    ld bc,342
     ld de,game_over_txt   
     call printstring	
 
@@ -269,12 +260,13 @@ printNumber_loop
     ret  
     
 drawInitialScreen    
-    ;; draw boarder for the play area consisting of inverse xcharacter decinaml 189
+    ;; draw boarder for the play area consisting of inverse x character decinaml 189
+    ;; is a lot faster (ie perceptively instant) not using the PRINTAT and PRINT calls
     call CLS
 
     ld de, 0
     ld (absoluteScreenMemoryPosition), de    
-drawLineZeroAndLast
+drawLineZeroAndLast         ; draw the boarder at top and bottom
     ld hl, Display+1    
     add hl, de    
     ld (hl), 189

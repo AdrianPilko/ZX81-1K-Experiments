@@ -18,7 +18,7 @@
 #define KEYBOARD_READ_PORT $FE 
 
 #define SHAPE_CHAR_0   128        ; black square
-#define SHAPE_CHAR_NO_PRINT   136        ; black square
+#define SHAPE_CHAR_NO_PRINT   0        ; black square
 #define SNAKE_LEN_MINUS_ONE 15
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -28,10 +28,21 @@
 initVariables    
     call drawInitialScreen
 
-    ld a, 10
-    ld (snakeCoordsRow), a    
+    ld a, 10                    ; bit wasteful of memory, should put in loop?!
+    ld (snakeCoordsRow), a       
+    ld (snakeCoordsRow+1), a    
+    ld (snakeCoordsRow+2), a    
+    ld (snakeCoordsRow+3), a    
+    
     ld a, 15			  
     ld (snakeCoordsCol), a
+    dec a
+    ld (snakeCoordsCol+1), a
+    dec a
+    ld (snakeCoordsCol+2), a
+    dec a
+    ld (snakeCoordsCol+3), a
+
 
     ld a, 0
     ld (movedFlag),a
@@ -39,14 +50,16 @@ initVariables
     ld hl, Display
     ld de, 346
     add hl, de
-    ld (absoluteScreenMemoryPosition), hl
-    
+    ld (absoluteScreenMemoryPosition), hl    
     ld hl, (absoluteScreenMemoryPosition)
-    ;ld (hl), _A        ; debug to see where we think absoluteScreenMemoryPosition is    
+    ld (hl), SHAPE_CHAR_0        ; draw inital snake
+    dec hl    
+    ld (hl), SHAPE_CHAR_0        ; draw inital snak
+    dec hl
+    ld (hl), SHAPE_CHAR_0        ; draw inital snak
+    dec hl
+    ld (hl), SHAPE_CHAR_0        ; draw inital snak
     
-    
-    
-
 main
     ; read the keyboard input and adust the offset     
     ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			
@@ -87,17 +100,37 @@ drawLeft
     dec a    
     cp 0
     jp z, drawBlock    
+    
+    ; mv all the coordinates leaving the zero index to the new coord
+    
+; if this were C, but only works for 4 long snake, needs to be loop
+;snakeCoordsCol[3] = snakeCoordsCol[2]
+;snakeCoordsCol[2] = snakeCoordsCol[1]
+;snakeCoordsCol[1] = snakeCoordsCol[0]
+;snakeCoordsRow[3] = snakeCoordsRow[2]
+;snakeCoordsRow[2] = snakeCoordsRow[1]
+;snakeCoordsRow[1] = snakeCoordsRow[0] and leave snakeCoordsRow[0] as is
+    push af     ; store current a which is new col
+    ld a, (snakeCoordsCol+3)
+    ld (snakeCoordsCol+4), a    
+    ld a, (snakeCoordsCol+2)
+    ld (snakeCoordsCol+3), a
+    ld a, (snakeCoordsCol+1)
+    ld (snakeCoordsCol+2), a
+    ld a, (snakeCoordsCol+0)
+    ld (snakeCoordsCol+1), a
+    pop af
     ld (snakeCoordsCol), a    
-    
-   ; ld hl, snakeTailIndex
-   ; ld (hl), a
-    
-   ; ld a, (snakeTailIndex)
-   ; inc a
-   ; cp 15
-   ; jp z, drawLeftAfterTail
-    ;ld (snakeTailIndex), a
-;drawLeftAfterTail
+
+    ld a, (snakeCoordsRow+3)
+    ld (snakeCoordsRow+4), a    
+    ld a, (snakeCoordsRow+2)
+    ld (snakeCoordsRow+3), a
+    ld a, (snakeCoordsRow+1)
+    ld (snakeCoordsRow+2), a
+    ld a, (snakeCoordsRow+0)
+    ld (snakeCoordsRow+1), a
+    ;;ld a, (snakeCoordsRow+0) snake row + zero is same
     
     ld hl, (absoluteScreenMemoryPosition)
     dec hl    
@@ -111,7 +144,29 @@ drawRight
     inc a
     cp 31    
     jp z, drawBlock
+
+    
+    push af     ; store current a which is new col
+    ld a, (snakeCoordsCol+3)
+    ld (snakeCoordsCol+4), a  
+    ld a, (snakeCoordsCol+2)
+    ld (snakeCoordsCol+3), a
+    ld a, (snakeCoordsCol+1)
+    ld (snakeCoordsCol+2), a
+    ld a, (snakeCoordsCol+0)
+    ld (snakeCoordsCol+1), a
+    pop af
     ld (snakeCoordsCol), a    
+
+    ld a, (snakeCoordsRow+3)
+    ld (snakeCoordsRow+4), a      
+    ld a, (snakeCoordsRow+2)
+    ld (snakeCoordsRow+3), a
+    ld a, (snakeCoordsRow+1)
+    ld (snakeCoordsRow+2), a
+    ld a, (snakeCoordsRow+0)
+    ld (snakeCoordsRow+1), a    
+        
     ld hl, (absoluteScreenMemoryPosition)
     inc hl    
     ld (absoluteScreenMemoryPosition), hl    
@@ -124,7 +179,28 @@ drawUp
     dec a    
     cp 0    
     jp z, drawBlock
+    
+    push af     ; store current a which is new col
+    ld a, (snakeCoordsCol+3)
+    ld (snakeCoordsCol+4), a  
+    ld a, (snakeCoordsCol+2)
+    ld (snakeCoordsCol+3), a
+    ld a, (snakeCoordsCol+1)
+    ld (snakeCoordsCol+2), a
+    ld a, (snakeCoordsCol+0)
+    ld (snakeCoordsCol+1), a
+
+    ld a, (snakeCoordsRow+3)
+    ld (snakeCoordsRow+4), a      
+    ld a, (snakeCoordsRow+2)
+    ld (snakeCoordsRow+3), a
+    ld a, (snakeCoordsRow+1)
+    ld (snakeCoordsRow+2), a
+    ld a, (snakeCoordsRow+0)
+    ld (snakeCoordsRow+1), a        
+    pop af    
     ld (snakeCoordsRow), a    
+    
     ld hl, (absoluteScreenMemoryPosition)
     xor a
     push hl
@@ -140,7 +216,29 @@ drawDown
     inc a
     cp 22
     jp z, drawBlock    
-    ld (snakeCoordsRow), a
+    
+    push af     ; store current a which is new col
+    ld a, (snakeCoordsCol+3)
+    ld (snakeCoordsCol+4), a  
+    ld a, (snakeCoordsCol+2)
+    ld (snakeCoordsCol+3), a
+    ld a, (snakeCoordsCol+1)
+    ld (snakeCoordsCol+2), a
+    ld a, (snakeCoordsCol+0)
+    ld (snakeCoordsCol+1), a
+
+    ld a, (snakeCoordsRow+3)
+    ld (snakeCoordsRow+4), a      
+    ld a, (snakeCoordsRow+2)
+    ld (snakeCoordsRow+3), a
+    ld a, (snakeCoordsRow+1)
+    ld (snakeCoordsRow+2), a
+    ld a, (snakeCoordsRow+0)
+    ld (snakeCoordsRow+1), a        
+    pop af    
+    ld (snakeCoordsRow), a    
+
+
     ld hl, (absoluteScreenMemoryPosition)
     ld bc, 33
     add hl, bc
@@ -161,18 +259,29 @@ drawBlock
     jp nz, gameOver
 
 noCheck  
-
+    ld a, (movedFlag)
+    cp 0
+    jp z, NOwipeLastTailPreviousPos    
+    ld a, (snakeCoordsRow+4)   
+	ld h, a				    ; row set for PRINTAT
+    ld a, (snakeCoordsCol+4)
+    ld l, a				    ; column set for PRINTAT
+    
+    push hl  ; push hl to get into bc via the pop, why is ld bc, hl not an instruction? who am I to question :)
+    pop bc
+    call PRINTAT		; ROM routine to set current cursor position, from row b and column e  
+    ld a, SHAPE_CHAR_NO_PRINT
+    call PRINT     
+    
+NOwipeLastTailPreviousPos        
     ld a, (snakeCoordsRow)   
 	ld h, a				    ; row set for PRINTAT
     ld a, (snakeCoordsCol)
     ld l, a				    ; column set for PRINTAT
-
-    
     
     push hl  ; push hl to get into bc via the pop, why is ld bc, hl not an instruction? who am I to question :)
     pop bc
-    call PRINTAT		; ROM routine to set current cursor position, from row b and column e
-drawIt    
+    call PRINTAT		; ROM routine to set current cursor position, from row b and column e  
     ld a, (shapeSet)
     call PRINT 
   
@@ -289,8 +398,8 @@ absoluteScreenMemoryPosition
     DEFB 0,0    
 firstTimeFlag
     DEFB 1   
-snakeTailIndex
-    DEFB 15
+snakeTailIndex      ; this is the index of the last coordinate of the snake, zero initially
+    DEFB 3
 ; the snake can grow to a maximum length of 16 so store 16 row and column positions
 ; to enable it to be undrawn as it moves around. will increase once code works
 ; when we use these we will optimise by index offset of 16 as contiguous in memory
@@ -299,11 +408,11 @@ snakeTailIndex
 ; position and then draw that.
 
 ;; eventually we'll add code to make the snake longer when items are collected (eaten), and in that case
-;; we'll have to store a tail index
+;; we'll have to store a tail index, initially 4 lnog
 snakeCoordsRow    
-    DEFB 10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 10,10,10,10,0,0,0,0,0,0,0,0,0,0,0,0
 snakeCoordsCol            
-    DEFB 15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 15,14,13,12,0,0,0,0,0,0,0,0,0,0,0,0
     
 #include "endbasic.asm"
 m

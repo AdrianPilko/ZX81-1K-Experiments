@@ -19,7 +19,7 @@
 
 #define SHAPE_CHAR_0   128        ; black square
 #define SHAPE_CHAR_NO_PRINT   136        ; black square
-#define FIXED_LENGTH_OF_SNAKE 16
+#define SNAKE_LEN_MINUS_ONE 15
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp initVariables		; main entry poitn to the code ships the memory definitions
@@ -27,24 +27,11 @@
 
 initVariables    
     call drawInitialScreen
-  ;  ld bc,3
- ;   ld de,first_line_a
- ;   call printstring
-    
-    push ix
-    ;di
-    ld ix, snakeCoordsRow
-    ld (ix),10
-    ld (ix+FIXED_LENGTH_OF_SNAKE),15        ; this is what was shapeCol    
-    ld h, (ix)			                     ; row set for PRINTAT           
-    ld l, (ix+FIXED_LENGTH_OF_SNAKE)       ; col set for PRINTAT               
-    ;ei
-    pop ix    
-    push hl
-    pop bc
-    call PRINTAT		; ROM routine to set current cursor position, from row b and column e    
-    ld a, SHAPE_CHAR_0
-    call PRINT
+
+    ld a, 10
+    ld (snakeCoordsRow), a    
+    ld a, 15			  
+    ld (snakeCoordsCol), a
 
     ld a, 0
     ld (movedFlag),a
@@ -55,7 +42,7 @@ initVariables
     ld (absoluteScreenMemoryPosition), hl
     
     ld hl, (absoluteScreenMemoryPosition)
-    ld (hl), _A        ; debug to see where we think absoluteScreenMemoryPosition is    
+    ;ld (hl), _A        ; debug to see where we think absoluteScreenMemoryPosition is    
     
     
     
@@ -95,15 +82,23 @@ main
     jp drawBlock
 drawLeft   
     ld a, 1
-    ld (movedFlag), a
-    push ix
-    ld ix, snakeCoordsRow
-    ld a, (ix+FIXED_LENGTH_OF_SNAKE)          ; this is what was shapeCol         
+    ld (movedFlag), a      
+    ld a, (snakeCoordsCol)    
     dec a    
     cp 0
-    jp z, popIXBeforedrawBlock
-    ld (ix+FIXED_LENGTH_OF_SNAKE),a
-    pop ix 
+    jp z, drawBlock    
+    ld (snakeCoordsCol), a    
+    
+   ; ld hl, snakeTailIndex
+   ; ld (hl), a
+    
+   ; ld a, (snakeTailIndex)
+   ; inc a
+   ; cp 15
+   ; jp z, drawLeftAfterTail
+    ;ld (snakeTailIndex), a
+;drawLeftAfterTail
+    
     ld hl, (absoluteScreenMemoryPosition)
     dec hl    
     ld (absoluteScreenMemoryPosition), hl        
@@ -111,15 +106,12 @@ drawLeft
     
 drawRight
     ld a, 2
-    ld (movedFlag), a
-    push ix
-    ld ix, snakeCoordsRow
-    ld a, (ix+FIXED_LENGTH_OF_SNAKE)          ; this is what was shapeCol  
+    ld (movedFlag), a    
+    ld a, (snakeCoordsCol)  
     inc a
     cp 31    
-    jp z, popIXBeforedrawBlock
-    ld (ix+FIXED_LENGTH_OF_SNAKE),a
-    pop ix 
+    jp z, drawBlock
+    ld (snakeCoordsCol), a    
     ld hl, (absoluteScreenMemoryPosition)
     inc hl    
     ld (absoluteScreenMemoryPosition), hl    
@@ -128,14 +120,11 @@ drawRight
 drawUp
     ld a, 3
     ld (movedFlag), a
-    push ix    
-    ld ix, snakeCoordsRow
-    ld a, (ix)          ; this is what was shapeRow   
+    ld a, (snakeCoordsRow)    
     dec a    
     cp 0    
-    jp z, popIXBeforedrawBlock
-    ld (ix),a
-    pop ix
+    jp z, drawBlock
+    ld (snakeCoordsRow), a    
     ld hl, (absoluteScreenMemoryPosition)
     xor a
     push hl
@@ -146,24 +135,18 @@ drawUp
     jp drawBlock
 drawDown
     ld a, 4
-    ld (movedFlag), a
-    push ix
-    ld ix, snakeCoordsRow
-    ld a, (ix)          ; this is what was shapeRow   
+    ld (movedFlag), a 
+    ld a, (snakeCoordsRow)
     inc a
     cp 22
-    jp z, popIXBeforedrawBlock
-    ld (ix),a
-    pop ix
+    jp z, drawBlock    
+    ld (snakeCoordsRow), a
     ld hl, (absoluteScreenMemoryPosition)
     ld bc, 33
     add hl, bc
     ld (absoluteScreenMemoryPosition), hl    
     jp drawBlock
-    
-popIXBeforedrawBlock
-    pop ix
-    ei
+       
 drawBlock
     ; we need to check cursor position we've moved to for and existing block 
     ; not on first time throught though when not moved   
@@ -172,24 +155,19 @@ drawBlock
     jp z, noCheck
 
     ld hl, (absoluteScreenMemoryPosition)
-    ;ld (hl), _A        ; debug to see where we think absoluteScreenMemoryPosition is
-    
+   
     ld a, (hl)
     and SHAPE_CHAR_0    
     jp nz, gameOver
 
 noCheck  
-    push ix
-    ld ix, snakeCoordsRow   ; this is the "array" of memory locations for the Y position (row)
-                            ; the way we have defined the row and column is to have the X (column) coordinates 
-                            ; straight after the memory for the row.
-                            ; the head of the snake is s=currently the highest memory location
-    
-    ld a,(ix)
+
+    ld a, (snakeCoordsRow)   
 	ld h, a				    ; row set for PRINTAT
-    ld a, (ix+FIXED_LENGTH_OF_SNAKE)
+    ld a, (snakeCoordsCol)
     ld l, a				    ; column set for PRINTAT
-    pop ix
+
+    
     
     push hl  ; push hl to get into bc via the pop, why is ld bc, hl not an instruction? who am I to question :)
     pop bc
@@ -311,6 +289,8 @@ absoluteScreenMemoryPosition
     DEFB 0,0    
 firstTimeFlag
     DEFB 1   
+snakeTailIndex
+    DEFB 15
 ; the snake can grow to a maximum length of 16 so store 16 row and column positions
 ; to enable it to be undrawn as it moves around. will increase once code works
 ; when we use these we will optimise by index offset of 16 as contiguous in memory
@@ -326,3 +306,4 @@ snakeCoordsCol
     DEFB 15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     
 #include "endbasic.asm"
+m

@@ -19,41 +19,8 @@
 
 #define SHAPE_CHAR_0   128        ; black square
 #define SHAPE_CHAR_NO_PRINT   136        ; black square
+#define FIXED_LENGTH_OF_SNAKE 16
 
-game_over_txt
-	DEFB	_G,_A,_M,_E,__,_O,_V,_E,_R,$ff 
-;first_line_a
-;    DEFB _L,_E,_F,_T,__,_Z,__,_R,_I,_G,_H,_T,$ff 
-;first_line_b    
-;    DEFB __,_M,__,_U,_P,__,_X,__,_D,_O,_W,_N,__,_N,$ff 
-shapeRow 
-    DEFB 0
-shapeCol     
-    DEFB 0
-shapeSet
-    DEFB SHAPE_CHAR_0
-shapeOnFlag
-    DEFB 0
-movedFlag
-    DEFB 0      ; default to stationary = 0, 1 = left, 2 = right, 3 = up, 4 = down
-absoluteScreenMemoryPosition
-    DEFB 0,0    
-firstTimeFlag
-    DEFB 1   
-; the snake can grow to a maximum length of 16 so store 16 row and column positions
-; to enable it to be undrawn as it moves around. will increase once code works
-; when we use these we will optimise by index offset of 16 as contiguous in memory
-
-; the intention is to delete (on screen) the tail of the snake (which i'm saying is the zero index) 
-; shuffle all the coords down by one, then set the 15th index (counting from zero) to the new shap 
-; position and then draw that.
-
-;; eventually we'll add code to make the snake longer when items are collected (eaten), and in that case
-;; we'll have to store a tail index
-snakeCoordsRow    
-    DEFB 10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10
-snakeCoordsCol            
-    DEFB 3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp initVariables		; main entry poitn to the code ships the memory definitions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -64,16 +31,21 @@ initVariables
  ;   ld de,first_line_a
  ;   call printstring
     
-    ld a, 10
-    ld (shapeRow),a
-    ld h, a				; row set for PRINTAT       
-    ld a, 15
-    ld (shapeCol),a
-    ld l, a				; row set for PRINTAT    
+    push ix
+    ;di
+    ld ix, snakeCoordsRow
+    ld (ix),10
+    ld (ix+FIXED_LENGTH_OF_SNAKE),15        ; this is what was shapeCol    
+    ld h, (ix)			                     ; row set for PRINTAT           
+    ld l, (ix+FIXED_LENGTH_OF_SNAKE)       ; col set for PRINTAT               
+    ;ei
+    pop ix    
     push hl
     pop bc
     call PRINTAT		; ROM routine to set current cursor position, from row b and column e    
-    
+    ld a, SHAPE_CHAR_0
+    call PRINT
+
     ld a, 0
     ld (movedFlag),a
     
@@ -81,6 +53,9 @@ initVariables
     ld de, 346
     add hl, de
     ld (absoluteScreenMemoryPosition), hl
+    
+    ld hl, (absoluteScreenMemoryPosition)
+    ld (hl), _A        ; debug to see where we think absoluteScreenMemoryPosition is    
     
     
     
@@ -121,11 +96,14 @@ main
 drawLeft   
     ld a, 1
     ld (movedFlag), a
-    ld a, (shapeCol)         
+    push ix
+    ld ix, snakeCoordsRow
+    ld a, (ix+FIXED_LENGTH_OF_SNAKE)          ; this is what was shapeCol         
     dec a    
     cp 0
-    jp z, drawBlock    
-    ld (shapeCol),a
+    jp z, popIXBeforedrawBlock
+    ld (ix+FIXED_LENGTH_OF_SNAKE),a
+    pop ix 
     ld hl, (absoluteScreenMemoryPosition)
     dec hl    
     ld (absoluteScreenMemoryPosition), hl        
@@ -134,11 +112,14 @@ drawLeft
 drawRight
     ld a, 2
     ld (movedFlag), a
-    ld a, (shapeCol)         
+    push ix
+    ld ix, snakeCoordsRow
+    ld a, (ix+FIXED_LENGTH_OF_SNAKE)          ; this is what was shapeCol  
     inc a
-    cp 31
-    jp z, drawBlock     ; we need to wrap to other side of screen, ioe take 31 off
-    ld (shapeCol),a    
+    cp 31    
+    jp z, popIXBeforedrawBlock
+    ld (ix+FIXED_LENGTH_OF_SNAKE),a
+    pop ix 
     ld hl, (absoluteScreenMemoryPosition)
     inc hl    
     ld (absoluteScreenMemoryPosition), hl    
@@ -147,11 +128,14 @@ drawRight
 drawUp
     ld a, 3
     ld (movedFlag), a
-    ld a, (shapeRow)         
+    push ix    
+    ld ix, snakeCoordsRow
+    ld a, (ix)          ; this is what was shapeRow   
     dec a    
-    cp 0
-    jp z, drawBlock    
-    ld (shapeRow),a
+    cp 0    
+    jp z, popIXBeforedrawBlock
+    ld (ix),a
+    pop ix
     ld hl, (absoluteScreenMemoryPosition)
     xor a
     push hl
@@ -163,18 +147,23 @@ drawUp
 drawDown
     ld a, 4
     ld (movedFlag), a
-    ld a, (shapeRow)    
+    push ix
+    ld ix, snakeCoordsRow
+    ld a, (ix)          ; this is what was shapeRow   
     inc a
     cp 22
-    jp z, drawBlock
-    ld (shapeRow),a
+    jp z, popIXBeforedrawBlock
+    ld (ix),a
+    pop ix
     ld hl, (absoluteScreenMemoryPosition)
     ld bc, 33
     add hl, bc
-    ld (absoluteScreenMemoryPosition), hl
-    
+    ld (absoluteScreenMemoryPosition), hl    
     jp drawBlock
     
+popIXBeforedrawBlock
+    pop ix
+    ei
 drawBlock
     ; we need to check cursor position we've moved to for and existing block 
     ; not on first time throught though when not moved   
@@ -189,16 +178,20 @@ drawBlock
     and SHAPE_CHAR_0    
     jp nz, gameOver
 
-noCheck
+noCheck  
+    push ix
+    ld ix, snakeCoordsRow   ; this is the "array" of memory locations for the Y position (row)
+                            ; the way we have defined the row and column is to have the X (column) coordinates 
+                            ; straight after the memory for the row.
+                            ; the head of the snake is s=currently the highest memory location
     
-    ld a,(shapeRow)
-	ld h, a				; row set for PRINTAT
-    ld a, (shapeCol)
-    ld l, a				; row set for PRINTAT
+    ld a,(ix)
+	ld h, a				    ; row set for PRINTAT
+    ld a, (ix+FIXED_LENGTH_OF_SNAKE)
+    ld l, a				    ; column set for PRINTAT
+    pop ix
     
-    
-    
-    push hl
+    push hl  ; push hl to get into bc via the pop, why is ld bc, hl not an instruction? who am I to question :)
     pop bc
     call PRINTAT		; ROM routine to set current cursor position, from row b and column e
 drawIt    
@@ -302,4 +295,34 @@ drawColZero
    
 #include "line2.asm"
 #include "screenFull.asm"      			; definition of the screen memory, in colapsed version for 1K        
+game_over_txt
+	DEFB	_G,_A,_M,_E,__,_O,_V,_E,_R,$ff 
+;first_line_a
+;    DEFB _L,_E,_F,_T,__,_Z,__,_R,_I,_G,_H,_T,$ff 
+;first_line_b    
+;    DEFB __,_M,__,_U,_P,__,_X,__,_D,_O,_W,_N,__,_N,$ff 
+shapeSet
+    DEFB SHAPE_CHAR_0
+shapeOnFlag
+    DEFB 0
+movedFlag
+    DEFB 0      ; default to stationary = 0, 1 = left, 2 = right, 3 = up, 4 = down
+absoluteScreenMemoryPosition
+    DEFB 0,0    
+firstTimeFlag
+    DEFB 1   
+; the snake can grow to a maximum length of 16 so store 16 row and column positions
+; to enable it to be undrawn as it moves around. will increase once code works
+; when we use these we will optimise by index offset of 16 as contiguous in memory
+
+; the intention is to delete (on screen) the tail of the snake which is at whatever the length is set to
+; position and then draw that.
+
+;; eventually we'll add code to make the snake longer when items are collected (eaten), and in that case
+;; we'll have to store a tail index
+snakeCoordsRow    
+    DEFB 10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+snakeCoordsCol            
+    DEFB 15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    
 #include "endbasic.asm"

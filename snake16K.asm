@@ -1,4 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
 ;;; zx81 16K code 
 ;;; It's a clone of snake (in case that wasn't clear from filename;)
 ;;;;;;;;;;;;;;;;;;;;;
@@ -33,6 +35,7 @@ initVariables
     ld (snakeCoordsRow+1), a    
     ld (snakeCoordsRow+2), a    
     ld (snakeCoordsRow+3), a    
+    ld (snakeCoordsRow+4), a    
     
     ld a, 15			  
     ld (snakeCoordsCol), a
@@ -42,11 +45,13 @@ initVariables
     ld (snakeCoordsCol+2), a
     dec a
     ld (snakeCoordsCol+3), a
-
-    ld a, 3
+    dec a
+    ld (snakeCoordsCol+4), a
+    
+    ld a, 4
     ld (snakeTailIndex), a
     
-    ld a, 0
+    ld a, 2
     ld (movedFlag),a
     
     ld hl, Display
@@ -103,36 +108,7 @@ drawLeft
     cp 0
     jp z, drawBlock    
     
-    ; mv all the coordinates leaving the zero index to the new coord
-    
-; if this were C, but only works for 4 long snake, needs to be loop
-;snakeCoordsCol[3] = snakeCoordsCol[2]
-;snakeCoordsCol[2] = snakeCoordsCol[1]
-;snakeCoordsCol[1] = snakeCoordsCol[0]
-;snakeCoordsRow[3] = snakeCoordsRow[2]
-;snakeCoordsRow[2] = snakeCoordsRow[1]
-;snakeCoordsRow[1] = snakeCoordsRow[0] and leave snakeCoordsRow[0] as is
-    push af     ; store current a which is new col
-    ld a, (snakeCoordsCol+3)
-    ld (snakeCoordsCol+4), a    
-    ld a, (snakeCoordsCol+2)
-    ld (snakeCoordsCol+3), a
-    ld a, (snakeCoordsCol+1)
-    ld (snakeCoordsCol+2), a
-    ld a, (snakeCoordsCol+0)
-    ld (snakeCoordsCol+1), a
-    pop af
-    ld (snakeCoordsCol), a    
-
-    ld a, (snakeCoordsRow+3)
-    ld (snakeCoordsRow+4), a    
-    ld a, (snakeCoordsRow+2)
-    ld (snakeCoordsRow+3), a
-    ld a, (snakeCoordsRow+1)
-    ld (snakeCoordsRow+2), a
-    ld a, (snakeCoordsRow+0)
-    ld (snakeCoordsRow+1), a
-    ;;ld a, (snakeCoordsRow+0) snake row + zero is same
+    call shuffleSnakeInCol
     
     ld hl, (absoluteScreenMemoryPosition)
     dec hl    
@@ -147,34 +123,8 @@ drawRight
     cp 31    
     jp z, drawBlock
 
-    ld (snakeCoordsColTemp), a      ; save til the shuffle complete
-    ld hl, snakeCoordsCol            
-    ld b, 0
-    ld a, (snakeTailIndex) 
-    ld c, a
-    add hl, bc
-    ld bc, (snakeTailIndex)          
-    ;; loop for b
-drawLeftSnakeShuffleLoopCol
-    ld a, (hl)    
-    inc hl
-    ld (hl), a    
-    dec hl
-    dec hl
-    djnz drawLeftSnakeShuffleLoopCol     
-    
-    ld a, (snakeCoordsColTemp); set the new head position to the temp stored one right at the end    
-    ld (snakeCoordsCol), a    
-
-    ld a, (snakeCoordsRow+3)
-    ld (snakeCoordsRow+4), a      ;; we're setting the index one after tail to the last tail before moving
-    ld a, (snakeCoordsRow+2)
-    ld (snakeCoordsRow+3), a
-    ld a, (snakeCoordsRow+1)
-    ld (snakeCoordsRow+2), a
-    ld a, (snakeCoordsRow+0)
-    ld (snakeCoordsRow+1), a       
-    
+    call shuffleSnakeInCol    
+   
     ld hl, (absoluteScreenMemoryPosition)
     inc hl    
     ld (absoluteScreenMemoryPosition), hl    
@@ -188,27 +138,8 @@ drawUp
     cp 0    
     jp z, drawBlock
     
-    push af     ; store current a which is new col
-    ld a, (snakeCoordsCol+3)
-    ld (snakeCoordsCol+4), a  
-    ld a, (snakeCoordsCol+2)
-    ld (snakeCoordsCol+3), a
-    ld a, (snakeCoordsCol+1)
-    ld (snakeCoordsCol+2), a
-    ld a, (snakeCoordsCol+0)
-    ld (snakeCoordsCol+1), a
-
-    ld a, (snakeCoordsRow+3)
-    ld (snakeCoordsRow+4), a      
-    ld a, (snakeCoordsRow+2)
-    ld (snakeCoordsRow+3), a
-    ld a, (snakeCoordsRow+1)
-    ld (snakeCoordsRow+2), a
-    ld a, (snakeCoordsRow+0)
-    ld (snakeCoordsRow+1), a        
-    pop af    
-    ld (snakeCoordsRow), a    
-    
+    call shuffleSnakeInRow
+        
     ld hl, (absoluteScreenMemoryPosition)
     xor a
     push hl
@@ -224,28 +155,8 @@ drawDown
     inc a
     cp 22
     jp z, drawBlock    
-    
-    push af     ; store current a which is new col
-    ld a, (snakeCoordsCol+3)
-    ld (snakeCoordsCol+4), a  
-    ld a, (snakeCoordsCol+2)
-    ld (snakeCoordsCol+3), a
-    ld a, (snakeCoordsCol+1)
-    ld (snakeCoordsCol+2), a
-    ld a, (snakeCoordsCol+0)
-    ld (snakeCoordsCol+1), a
 
-    ld a, (snakeCoordsRow+3)
-    ld (snakeCoordsRow+4), a      
-    ld a, (snakeCoordsRow+2)
-    ld (snakeCoordsRow+3), a
-    ld a, (snakeCoordsRow+1)
-    ld (snakeCoordsRow+2), a
-    ld a, (snakeCoordsRow+0)
-    ld (snakeCoordsRow+1), a        
-    pop af    
-    ld (snakeCoordsRow), a    
-
+    call shuffleSnakeInRow
 
     ld hl, (absoluteScreenMemoryPosition)
     ld bc, 33
@@ -271,26 +182,27 @@ noCheck
     cp 0
     jp z, NOwipeLastTailPreviousPos    
     
-    ld hl, snakeCoordsRow
-    ld b, 0
-    ld a, (snakeTailIndex) 
-    ld c, a
-    add hl, bc
-    inc hl          ; set "index" to one past the end
-    ld a, (hl)
-    ;ld a, (snakeCoordsRow+4)   
-	ld h, a				    ; row set for PRINTAT
+    ;ld hl, snakeCoordsRow
+    ;ld b, 0
+    ;ld a, (snakeTailIndex) 
+    ;ld c, a
+    ;add hl, bc
+    ;inc hl          ; set "index" to one past the end
+    ;ld a, (hl)
+   
+    ld a, (snakeCoordsRow+5)   
+    ld h, a				    ; row set for PRINTAT
     
-    push hl
-    ld hl, snakeCoordsCol
-    ld b, 0
-    ld a, (snakeTailIndex) 
-    ld c, a
-    add hl, bc
-    inc hl          ; set "index" to one past the end
-    ld a, (hl)
-    pop hl
-    ;ld a, (snakeCoordsCol+4)
+    ;push hl
+    ;ld hl, snakeCoordsCol
+    ;ld b, 0
+    ;ld a, (snakeTailIndex) 
+    ;ld c, a
+    ;add hl, bc
+    ;inc hl          ; set "index" to one past the end
+    ;ld a, (hl)
+    ;pop hl
+    ld a, (snakeCoordsCol+5)
     ld l, a				    ; column set for PRINTAT
     
     push hl  ; push hl to get into bc via the pop, why is ld bc, hl not an instruction? who am I to question :)
@@ -406,6 +318,99 @@ drawColZero
     djnz drawColZero
 
     ret
+    
+
+shuffleSnakeInCol
+    push af
+    ;ld a, 2;(snakeTailIndex)
+    ;ld b, a
+    ;; loop for b
+    
+;drawLeftSnakeShuffleLoopCol    
+;    ld hl, snakeCoordsCol                        
+;    ld d, 0
+;    ld e, b
+;    add hl, de
+;    ld a, (hl)
+;    inc hl    
+;    ld (hl), a                
+;    djnz drawLeftSnakeShuffleLoopCol     
+    
+   ; di              ; disable interrupts
+   ; LD A,0          ; disable NMI for DEBUG only
+   ; OUT ($FD),A     ; disable NMI for DEBUG only
+;here__    
+;    jp here__
+
+    ld a, (snakeCoordsCol+4)
+    ld (snakeCoordsCol+5), a      ;; we're setting the index one after tail to the last tail before moving    
+    ld a, (snakeCoordsCol+3)
+    ld (snakeCoordsCol+4), a      ;; we're setting the index one after tail to the last tail before moving
+    ld a, (snakeCoordsCol+2)
+    ld (snakeCoordsCol+3), a
+    ld a, (snakeCoordsCol+1)
+    ld (snakeCoordsCol+2), a
+    ld a, (snakeCoordsCol+0)
+    ld (snakeCoordsCol+1), a     
+      
+    pop af    
+    ld (snakeCoordsCol), a
+  
+    ;ld hl, snakeCoordsRow            
+    ;ld b, 0
+    ;ld a, (snakeTailIndex) 
+    ;ld c, a
+    ;add hl, bc
+    ;ld bc, (snakeTailIndex)          
+    
+   ;; loop for b
+;drawLeftSnakeShuffleLoopRow
+;    ld a, (hl)    
+;    inc hl
+;    ld (hl), a    
+;    dec hl
+;    dec hl
+ ;   djnz drawLeftSnakeShuffleLoopRow
+
+    ld a, (snakeCoordsRow+4)
+    ld (snakeCoordsRow+5), a      ;; we're setting the index one after tail to the last tail before moving
+    ld a, (snakeCoordsRow+3)
+    ld (snakeCoordsRow+4), a      ;; we're setting the index one after tail to the last tail before moving
+    ld a, (snakeCoordsRow+2)
+    ld (snakeCoordsRow+3), a
+    ld a, (snakeCoordsRow+1)
+    ld (snakeCoordsRow+2), a
+    ld a, (snakeCoordsRow+0)
+    ld (snakeCoordsRow+1), a     
+    ret
+    
+shuffleSnakeInRow
+    push af     ; store current a which is new col
+    ld a, (snakeCoordsCol+4)
+    ld (snakeCoordsCol+5), a      
+    ld a, (snakeCoordsCol+3)
+    ld (snakeCoordsCol+4), a  
+    ld a, (snakeCoordsCol+2)
+    ld (snakeCoordsCol+3), a
+    ld a, (snakeCoordsCol+1)
+    ld (snakeCoordsCol+2), a
+    ld a, (snakeCoordsCol+0)
+    ld (snakeCoordsCol+1), a
+
+    ld a, (snakeCoordsRow+4)
+    ld (snakeCoordsRow+5), a      
+    ld a, (snakeCoordsRow+3)
+    ld (snakeCoordsRow+4), a      
+    ld a, (snakeCoordsRow+2)
+    ld (snakeCoordsRow+3), a
+    ld a, (snakeCoordsRow+1)
+    ld (snakeCoordsRow+2), a
+    ld a, (snakeCoordsRow+0)
+    ld (snakeCoordsRow+1), a        
+    pop af    
+    ld (snakeCoordsRow), a    
+    ret
+    
    
 #include "line2.asm"
 #include "screenFull.asm"      			; definition of the screen memory, in colapsed version for 1K        
@@ -427,6 +432,8 @@ firstTimeFlag
     DEFB 1   
 snakeTailIndex      ; this is the index of the last coordinate of the snake, 3 initially (meaning there are 4 snake blocks)
     DEFB 0
+snakeCoordTemp    
+    DEFB 0,0
 ; the snake can grow to a maximum length of 16 so store 16 row and column positions
 ; to enable it to be undrawn as it moves around. will increase once code works
 ; when we use these we will optimise by index offset of 16 as contiguous in memory
@@ -436,10 +443,14 @@ snakeTailIndex      ; this is the index of the last coordinate of the snake, 3 i
 
 ;; eventually we'll add code to make the snake longer when items are collected (eaten), and in that case
 ;; we'll have to store a tail index, initially 4 lnog
-snakeCoordsRow    
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 snakeCoordsCol            
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
+snakeCoordsRow    
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
+
 snakeCoordsColTemp
     DEFB 0
+snakeCoordsRowTemp
+    DEFB 0
+   
 #include "endbasic.asm"

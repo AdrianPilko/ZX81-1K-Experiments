@@ -1,6 +1,4 @@
 ;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;
 ;;; zx81 16K code 
 ;;; It's a clone of snake (in case that wasn't clear from filename;)
 ;;;;;;;;;;;;;;;;;;;;;
@@ -20,6 +18,7 @@
 #define KEYBOARD_READ_PORT $FE 
 
 #define SHAPE_CHAR_0   128        ; black square
+#define SHAPE_CHAR_FOOD 136
 #define SHAPE_CHAR_NO_PRINT   0        ; black square
 #define SNAKE_LEN_MINUS_ONE 15
 
@@ -50,6 +49,8 @@ initVariables
     
     ld a, 4
     ld (snakeTailIndex), a
+    
+ 
   
     
     ld a, 2
@@ -67,6 +68,33 @@ initVariables
     ld (hl), SHAPE_CHAR_0        ; draw inital snak
     dec hl
     ld (hl), SHAPE_CHAR_0        ; draw inital snak
+    
+    ;; setup (for now) not so random food
+    ld hl, Display 
+    ld de, 550
+    add hl, de
+    ld (hl), 136    ; this is the first food for snake, and as a test before random
+
+    ld hl, Display 
+    ld de, 207
+    add hl, de
+    ld (hl), 136    ; this is the first food for snake, and as a test before random
+
+    ld hl, Display 
+    ld de, 402
+    add hl, de
+    ld (hl), 136    ; this is the first food for snake, and as a test before random    
+    
+    ld hl, Display 
+    ld de, 227
+    add hl, de
+    ld (hl), 136    ; this is the first food for snake, and as a test before random
+
+    ld hl, Display 
+    ld de, 599
+    add hl, de
+    ld (hl), 136    ; this is the first food for snake, and as a test before random    
+
     
 main
     ; read the keyboard input and adust the offset     
@@ -174,9 +202,142 @@ drawBlock
 
     ld hl, (absoluteScreenMemoryPosition)
    
+    xor a           ; zero a and clear flags
     ld a, (hl)
-    and SHAPE_CHAR_0    
-    jp nz, gameOver
+    sub SHAPE_CHAR_0    
+    jp z, gameOver
+    
+;    di              ; disable interrupts
+;    LD A,0          ; disable NMI for DEBUG only
+;    OUT ($FD),A     ; disable NMI for DEBUG only
+;here__    
+;    jp here__
+    
+    xor a           ; zero a and clear flags
+    ld a, (hl)
+    sub SHAPE_CHAR_FOOD
+    jp nz, noCheck
+    
+    ; we got the food, so increase length of the snake...    
+    ; ...but we also need to set the new coordinates for the tail based on the direction
+    ; if moving down new tail is same col, last tail row-1
+    ; if moving up new tail is same col, last tail row+1
+    ; if moving left new tail is same row last tail col+1
+    ; if moving right new tail is same row, last tail col-1    
+
+    ld a, (movedFlag)
+    cp 1
+    jp z, newcorrdForLeft
+    cp 2
+    jp z, newcorrdForRight
+    cp 3
+    jp z, newcorrdForUp
+    cp 4
+    jp z, newcorrdForDown
+    jp noCheck  ; should never get here as always moving
+    
+newcorrdForLeft
+    ld a, (snakeTailIndex)        
+    ld b, a     ; for some reason get a MS byte not used unless you go via a ??      
+    ld hl, snakeCoordsRow                       
+    ld d, 0
+    ld e, b
+    add hl, de    
+    ld a, (hl)
+    inc hl  ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous
+
+    ld a, (snakeTailIndex)        
+    ld b, a     ; for some reason get a MS byte not used unless you go via a ??      
+    ld hl, snakeCoordsCol
+    ld d, 0
+    ld e, b
+    add hl, de    
+    ld a, (hl)
+    inc a           ; going left new coord is current tail plus one
+    inc hl          ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous
+            
+    jp afterCoordAdd
+
+newcorrdForRight
+    ld a, (snakeTailIndex)        
+    ld b, a     ; for some reason get a MS byte not used unless you go via a ??
+    ld hl, snakeCoordsRow                       
+    ld d, 0
+    ld e, b
+    add hl, de    
+    ld a, (hl)
+    inc hl  ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous
+
+    ld a, (snakeTailIndex)        
+    ld b, a     ; for some reason get a MS byte not used unless you go via a ??      
+    ld hl, snakeCoordsCol
+    ld d, 0
+    ld e, b
+    add hl, de    
+    ld a, (hl)
+    dec a           ; going left new coord is current tail minus one
+    inc hl          ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous
+    jp afterCoordAdd
+
+newcorrdForUp ; if moving up new tail is same col, last tail row+1
+    ld a, (snakeTailIndex)        
+    ld b, a     ; for some reason get a MS byte not used unless you go via a ??
+    ld hl, snakeCoordsCol                       
+    ld d, 0
+    ld e, b
+    add hl, de    
+    ld a, (hl)
+    inc hl  ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous
+
+    ld a, (snakeTailIndex)        
+    ld b, a     ; for some reason get a MS byte not used unless you go via a ??      
+    ld hl, snakeCoordsRow
+    ld d, 0
+    ld e, b
+    add hl, de    
+    ld a, (hl)
+    inc a           ; going left new coord is current tail minus one
+    inc hl          ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous
+    
+    jp afterCoordAdd
+
+newcorrdForDown    ; if moving down new tail is same col, last tail row-1
+    ld a, (snakeTailIndex)        
+    ld b, a     ; for some reason get a MS byte not used unless you go via a ??
+    ld hl, snakeCoordsCol                       
+    ld d, 0
+    ld e, b
+    add hl, de    
+    ld a, (hl)
+    inc hl  ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous
+
+    ld a, (snakeTailIndex)        
+    ld b, a     ; for some reason get a MS byte not used unless you go via a ??      
+    ld hl, snakeCoordsRow
+    ld d, 0
+    ld e, b
+    add hl, de    
+    ld a, (hl)
+    dec a           ; going left new coord is current tail minus one
+    inc hl          ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous    
+    ; don't need jp afterCoordAdd as next is the same
+    
+afterCoordAdd    
+    ld a, (snakeTailIndex)
+    inc a
+    ld (snakeTailIndex), a
+
+    
+    
+    ; drop through
 
 noCheck  
     ld a, (movedFlag)
@@ -338,13 +499,7 @@ CdrawLeftSnakeShuffleLoopCol
     inc hl    
     ld (hl), a                
     djnz CdrawLeftSnakeShuffleLoopCol     
-    
-;    di              ; disable interrupts
-;    LD A,0          ; disable NMI for DEBUG only
-;    OUT ($FD),A     ; disable NMI for DEBUG only
-;here__    
-;    jp here__
-     
+       
     ld a, (snakeCoordsColTemp)      ; store the head of the snake new position in (snakeCoordsCol)
     ld (snakeCoordsCol), a
 

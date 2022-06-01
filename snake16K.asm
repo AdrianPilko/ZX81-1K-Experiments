@@ -63,11 +63,11 @@ initVariables
     ld hl, (absoluteScreenMemoryPosition)
     ld (hl), SHAPE_CHAR_0        ; draw inital snake
     dec hl    
-    ld (hl), SHAPE_CHAR_0        ; draw inital snak
+    ld (hl), SHAPE_CHAR_0        ; draw inital snake
     dec hl
-    ld (hl), SHAPE_CHAR_0        ; draw inital snak
+    ld (hl), SHAPE_CHAR_0        ; draw inital snake
     dec hl
-    ld (hl), SHAPE_CHAR_0        ; draw inital snak
+    ld (hl), SHAPE_CHAR_0        ; draw inital snake
     
     ;; setup (for now) not so random food
     ld hl, Display 

@@ -10,6 +10,8 @@
 #include "zx81sys.asm"                ;; removed some of unneeded definitions
 #include "line1.asm"
 
+; for start key 
+#define KEYBOARD_READ_PORT_A_TO_G	$FD
 ; keyboard port for shift key to v
 #define KEYBOARD_READ_PORT_SHIFT_TO_V $FE
 ; keyboard space to b
@@ -26,8 +28,70 @@
 #define SNAKE_MOVEMENT_DOWN 4
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	jp initVariables		; main entry poitn to the code ships the memory definitions
+	jp intro_title		; main entry poitn to the code ships the memory definitions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+introWaitLoop
+	ld bc,$00ff ;max waiting time
+introWaitLoop_1
+	dec bc
+	ld a,b
+	or c
+	jr nz, introWaitLoop_1
+	jp read_start_key
+	
+intro_title
+	call CLS	
+	ld bc,1
+	ld de,titleBanner
+	call printstring	
+	ld bc,34
+	ld de,titleBanner
+	call printstring		
+	ld bc,111
+	ld de,title_screen_txt
+	call printstring
+	ld bc,202    
+	ld de,keys_screen_txt_1
+	call printstring		
+
+	ld bc,246
+	ld de,keys_screen_txt_2
+	call printstring		
+    
+	ld bc,337
+	ld de,game_objective_txt
+	call printstring	
+	ld bc,436
+	ld de,last_Score_txt
+	call printstring	
+	;ld b, 14			; b is row to print in
+	;ld c, 13			; c is column
+    ;ld a, (last_score_mem_hund) ; load hundreds
+	;call printByte    
+	;ld b, 14			; b is row to print in
+	;ld c, 15			; c is column
+	;ld a, (last_score_mem_tens) ; load tens		
+	;call printByte	
+	ld bc,537	
+	ld de,credits_and_version_1
+	call printstring		
+	ld bc,569	
+	ld de,credits_and_version_2
+	call printstring	
+	
+	ld bc,727
+	ld de,titleBanner
+	call printstring		
+	ld bc,760
+	ld de,titleBanner
+	call printstring	
+
+read_start_key
+	ld a, KEYBOARD_READ_PORT_A_TO_G	
+	in a, (KEYBOARD_READ_PORT)					; read from io port	
+	bit 1, a									; check S key pressed
+	jp nz, introWaitLoop
+    ;; else drop into initVariables
 
 initVariables    
     call drawInitialScreen
@@ -465,7 +529,7 @@ waitloop_endGame
     ld a,b
     or c
     jr nz, waitloop_endGame      
-    jp initVariables
+    jp intro_title
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
 printstring
     ld hl,Display
@@ -733,6 +797,25 @@ snakeCoordsRow
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0    
 
+title_screen_txt
+	DEFB	_Z,_X,_8,_1,__,_S,_N,_A,_K,_E,$ff
+keys_screen_txt_1
+	DEFB	_S,__,_T,_O,__,_S,_T,_A,_R,_T,26,__,_Z,__,_L,_E,_F,_T,26,__,_M,__,_R,_I,_G,_H,_T,$ff
+keys_screen_txt_2
+	DEFB	__,_X,__,_U,_P,26,__,__,__,_N,__,_D,_O,_W,_N,$ff    
+game_objective_txt
+	DEFB	_G,_R,_O,_W,__,_S,_N,_A,_K,_E,__,_A,_N,_D,__,_A,_V,_O,_I,_D,$ff
+	
+last_Score_txt
+	DEFB	21,21,21,21,_L,_A,_S,_T,__,__,_S,_C,_O,_R,_E,21,21,21,21,$ff	
+high_Score_txt
+	DEFB	21,21,21,21,_H,_I,_G,_H,__,__,_S,_C,_O,_R,_E,21,21,21,21,$ff		
+titleBanner		
+	DEFB	4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,$ff		
+credits_and_version_1
+	DEFB _B,_Y,__,_A,__,_P,_I,_L,_K,_I,_N,_G,_T,_O,_N,$ff
+credits_and_version_2
+	DEFB __,__,__,__,__,__,_2,_0,_2,_2,__,__,__,__,__,$ff
     
     
 snakeCoordsColTemp

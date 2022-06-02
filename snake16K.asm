@@ -32,8 +32,22 @@
 initVariables    
     call drawInitialScreen
     
+    ld bc,3
+    ld de,scoreText   
+    call printstring	
+    
+    xor a
+    ld (score_mem_tens), a
+    ld bc, 10
+    ld de, score_mem_tens
+    call printNumber    
+    
+    
     ld a, 4 
     ld (snakeTailIndex), a
+    
+    ld hl, $0aff
+    ld (waitSpeed), hl
     
 
     ld a, 10                    ; bit wasteful of memory, should put in loop?!
@@ -87,7 +101,7 @@ initVariables
     call setRandomFood 
     call setRandomFood
     call setRandomFood
-    
+    call setRandomFood
     ;ld hl, Display 
     ;ld de, 550
     ;add hl, de
@@ -225,6 +239,20 @@ drawBlock
     jp nz, noCheck
     
     call setRandomFood ; generate more food
+    call setRandomFood ; generate more food
+    
+    ld hl, (waitSpeed)  ; speed up by one now we have got some more food
+    dec hl              
+    ld (waitSpeed), hl
+    
+    ld a, (score_mem_tens)
+    add a, 1
+    daa
+    ld (score_mem_tens), a
+    
+    ld bc, 10
+    ld de, score_mem_tens
+    call printNumber
     
     ; we got the food, so increase length of the snake...    
     ; ...but we also need to set the new coordinates for the tail based on the direction
@@ -411,7 +439,8 @@ NOwipeLastTailPreviousPos
   
     ;ld hl, $0fff
     ;ld hl, $ffff
-    ld hl, $0aff
+    ld hl, (waitSpeed)
+    ;ld hl, $0fff
     push hl
     pop bc
   
@@ -651,6 +680,8 @@ tryAnotherRRow                             ; generate random number to index sha
 #include "screenFull.asm"      			; definition of the screen memory, in colapsed version for 1K        
 game_over_txt
 	DEFB	_G,_A,_M,_E,__,_O,_V,_E,_R,$ff 
+scoreText    
+    DEFB	_S,_C,_O,_R,_E,__,__,$ff 
 ;first_line_a
 ;    DEFB _L,_E,_F,_T,__,_Z,__,_R,_I,_G,_H,_T,$ff 
 ;first_line_b    
@@ -673,7 +704,10 @@ setRandomFoodCOL
     DEFB 0
 setRandomFoodROW
     DEFB 0
-    
+waitSpeed
+    DEFB 0,0
+score_mem_tens
+    DEFB 0,0
 ; the snake can grow to a maximum length of 16 so store 16 row and column positions
 ; to enable it to be undrawn as it moves around. will increase once code works
 ; when we use these we will optimise by index offset of 16 as contiguous in memory
@@ -685,13 +719,16 @@ setRandomFoodROW
 ;; we'll have to store a tail index, initially 4 lnog
 snakeMovementFlags           ; this keeps track of the direction in force at each snake body position
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0    
 snakeCoordsCol            
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0    
 snakeCoordsRow    
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0    

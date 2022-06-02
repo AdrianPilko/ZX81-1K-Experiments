@@ -20,7 +20,10 @@
 #define SHAPE_CHAR_0   128        ; black square
 #define SHAPE_CHAR_FOOD 136
 #define SHAPE_CHAR_NO_PRINT   0        ; black square
-#define SNAKE_LEN_MINUS_ONE 15
+#define SNAKE_MOVEMENT_LEFT 1
+#define SNAKE_MOVEMENT_RIGHT 2
+#define SNAKE_MOVEMENT_UP 3
+#define SNAKE_MOVEMENT_DOWN 4
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp initVariables		; main entry poitn to the code ships the memory definitions
@@ -28,6 +31,10 @@
 
 initVariables    
     call drawInitialScreen
+    
+    ld a, 4 
+    ld (snakeTailIndex), a
+    
 
     ld a, 10                    ; bit wasteful of memory, should put in loop?!
     ld (snakeCoordsRow), a       
@@ -47,13 +54,19 @@ initVariables
     dec a
     ld (snakeCoordsCol+4), a
     
-    ld a, 4
-    ld (snakeTailIndex), a
-    
+    ; default movement is right
+    ld a, SNAKE_MOVEMENT_RIGHT
+    ld (snakeMovementFlags), a
+    ld (snakeMovementFlags+1), a
+    ld (snakeMovementFlags+2), a
+    ld (snakeMovementFlags+3), a
+    ld (snakeMovementFlags+4), a
+    ld (snakeMovementFlags+5), a
+    ld (snakeMovementFlags+6), a
  
   
     
-    ld a, 2
+    ld a, SNAKE_MOVEMENT_RIGHT
     ld (movedFlag),a
     
     ld hl, Display
@@ -115,22 +128,26 @@ main
     ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 3, a					        ; N
-    jp z, drawDown	    
+    jp z, drawDown
+
+    ;; we also have to keep track of the movement direction of the tail, which can clearly
+    ;; be different to the head
 
     ;;; keep moving in same direction even if no key pressed
     ld a, (movedFlag)
-    cp 1
+    cp SNAKE_MOVEMENT_LEFT
     jp z, drawLeft
-    cp 2
+    cp SNAKE_MOVEMENT_RIGHT
     jp z, drawRight
-    cp 3
+    cp SNAKE_MOVEMENT_UP
     jp z, drawUp
-    cp 4
+    cp SNAKE_MOVEMENT_DOWN
     jp z, drawDown
  
+    ret
     jp drawBlock
 drawLeft   
-    ld a, 1
+    ld a, SNAKE_MOVEMENT_LEFT
     ld (movedFlag), a      
     ld a, (snakeCoordsCol)    
     dec a    
@@ -145,7 +162,7 @@ drawLeft
     jp drawBlock
     
 drawRight
-    ld a, 2
+    ld a, SNAKE_MOVEMENT_RIGHT
     ld (movedFlag), a    
     ld a, (snakeCoordsCol)  
     inc a
@@ -160,7 +177,7 @@ drawRight
     jp drawBlock  
     
 drawUp
-    ld a, 3
+    ld a, SNAKE_MOVEMENT_UP
     ld (movedFlag), a
     ld a, (snakeCoordsRow)    
     dec a    
@@ -178,7 +195,7 @@ drawUp
     ld (absoluteScreenMemoryPosition), hl    
     jp drawBlock
 drawDown
-    ld a, 4
+    ld a, SNAKE_MOVEMENT_DOWN
     ld (movedFlag), a 
     ld a, (snakeCoordsRow)
     inc a
@@ -225,15 +242,25 @@ drawBlock
     ; if moving left new tail is same row last tail col+1
     ; if moving right new tail is same row, last tail col-1    
 
-    ld a, (movedFlag)
-    cp 1
+    ;; the new coordinate  doesn't depend on the current movement, but the 
+    ;; direction the previous tail position was moving in
+    ;;ld a, (movedFlag)
+    ld hl, snakeMovementFlags                   
+    ld d, 0
+    ld a, (snakeTailIndex)     
+    ld e, a
+    add hl, de
+    ld a, (hl)    
+    cp SNAKE_MOVEMENT_LEFT
     jp z, newcorrdForLeft
-    cp 2
+    cp SNAKE_MOVEMENT_RIGHT
     jp z, newcorrdForRight
-    cp 3
+    cp SNAKE_MOVEMENT_UP
     jp z, newcorrdForUp
-    cp 4
+    cp SNAKE_MOVEMENT_DOWN
     jp z, newcorrdForDown
+    
+    ret
     jp noCheck  ; should never get here as always moving
     
 newcorrdForLeft
@@ -301,9 +328,12 @@ newcorrdForUp ; if moving up new tail is same col, last tail row+1
     ld e, b
     add hl, de    
     ld a, (hl)
-    inc a           ; going left new coord is current tail minus one
+    inc a           ; going up new row coord is current tail plus one
     inc hl          ; to push coord on one
     ld (hl), a      ; make new coord smae as previous
+    inc a           ; we have to set the coord after the snakeTailIndex to valid tro prevent extra block dropping 
+    inc hl          ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous    
     
     jp afterCoordAdd
 
@@ -325,7 +355,10 @@ newcorrdForDown    ; if moving down new tail is same col, last tail row-1
     ld e, b
     add hl, de    
     ld a, (hl)
-    dec a           ; going left new coord is current tail minus one
+    dec a           ; going down new row coord is current tail minus one
+    inc hl          ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous    
+    dec a           ; we have to set the coord after the snakeTailIndex to valid tro prevent extra block dropping 
     inc hl          ; to push coord on one
     ld (hl), a      ; make new coord smae as previous    
     ; don't need jp afterCoordAdd as next is the same
@@ -480,7 +513,9 @@ drawColZero
     djnz drawColZero
 
     ret
-    
+
+;;;;;;;;;;;;;;;;;;;;; SHUFFLE SNAKE IN COL    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
 
 shuffleSnakeInCol
     ld (snakeCoordsColTemp), a          ; save the new position of the head of the snake    
@@ -498,10 +533,23 @@ CdrawLeftSnakeShuffleLoopCol
     ld a, (hl)
     inc hl    
     ld (hl), a                
+
+    ld hl, snakeMovementFlags                   
+    ld d, 0
+    ld e, b    
+    dec e       ; we want e to be one less than the loop counter
+    add hl, de
+    ld a, (hl)
+    inc hl    
+    ld (hl), a                
+    
     djnz CdrawLeftSnakeShuffleLoopCol     
        
     ld a, (snakeCoordsColTemp)      ; store the head of the snake new position in (snakeCoordsCol)
     ld (snakeCoordsCol), a
+    
+    ld a, (movedFlag)
+    ld (snakeMovementFlags), a    
 
     ld a, (snakeTailIndex)    
     inc a
@@ -520,11 +568,12 @@ CdrawLeftSnakeShuffleLoopRow
     djnz CdrawLeftSnakeShuffleLoopRow
     ret
     
-    
+;;;;;;;;;;;;;;;;;;;;; SHUFFLE SNAKE IN ROW    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
 shuffleSnakeInRow
-    ld (snakeCoordsRowTemp), a          ; save the new position of the head of the snake    
-    ld a, (snakeTailIndex)    
+    ld (snakeCoordsRowTemp), a          ; save the new position of the head of the snake        
+    ld a, (snakeTailIndex)        
     inc a
     ld b, a 
     ;; loop for b
@@ -537,10 +586,23 @@ RdrawLeftSnakeShuffleLoopRow
     ld a, (hl)
     inc hl    
     ld (hl), a                
+
+    ld hl, snakeMovementFlags                      
+    ld d, 0
+    ld e, b    
+    dec e       ; we want e to be one less than the loop counter
+    add hl, de
+    ld a, (hl)
+    inc hl    
+    ld (hl), a  
+    
     djnz RdrawLeftSnakeShuffleLoopRow     
         
     ld a, (snakeCoordsRowTemp)      ; store the head of the snake new position in (snakeCoordsCol)
     ld (snakeCoordsRow), a
+
+    ld a, (movedFlag)
+    ld (snakeMovementFlags), a    
 
     ld a, (snakeTailIndex)    
     inc a
@@ -593,11 +655,21 @@ snakeCoordTemp
 
 ;; eventually we'll add code to make the snake longer when items are collected (eaten), and in that case
 ;; we'll have to store a tail index, initially 4 lnog
+snakeMovementFlags           ; this keeps track of the direction in force at each snake body position
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0    
 snakeCoordsCol            
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0    
 snakeCoordsRow    
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0    
 
+    
+    
 snakeCoordsColTemp
     DEFB 0
 snakeCoordsRowTemp

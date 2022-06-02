@@ -81,33 +81,22 @@ initVariables
     ld (hl), SHAPE_CHAR_0        ; draw inital snake
     dec hl
     ld (hl), SHAPE_CHAR_0        ; draw inital snake
+
+    ; default two more food so is always 4 on screen at any one time
+    call setRandomFood
+    call setRandomFood 
+    call setRandomFood
+    call setRandomFood
     
-    ;; setup (for now) not so random food
-    ld hl, Display 
-    ld de, 550
-    add hl, de
-    ld (hl), 136    ; this is the first food for snake, and as a test before random
+    ;ld hl, Display 
+    ;ld de, 550
+    ;add hl, de
+    ;ld (hl), 136    ; this is the first food for snake, and as a test before random
 
-    ld hl, Display 
-    ld de, 207
-    add hl, de
-    ld (hl), 136    ; this is the first food for snake, and as a test before random
-
-    ld hl, Display 
-    ld de, 402
-    add hl, de
-    ld (hl), 136    ; this is the first food for snake, and as a test before random    
-    
-    ld hl, Display 
-    ld de, 227
-    add hl, de
-    ld (hl), 136    ; this is the first food for snake, and as a test before random
-
-    ld hl, Display 
-    ld de, 599
-    add hl, de
-    ld (hl), 136    ; this is the first food for snake, and as a test before random    
-
+    ;ld hl, Display 
+    ;ld de, 207
+    ;add hl, de
+    ;ld (hl), 136    ; this is the first food for snake, and as a test before random
     
 main
     ; read the keyboard input and adust the offset     
@@ -234,6 +223,8 @@ drawBlock
     ld a, (hl)
     sub SHAPE_CHAR_FOOD
     jp nz, noCheck
+    
+    call setRandomFood ; generate more food
     
     ; we got the food, so increase length of the snake...    
     ; ...but we also need to set the new coordinates for the tail based on the direction
@@ -418,8 +409,9 @@ NOwipeLastTailPreviousPos
     ld a, (shapeSet)
     call PRINT 
   
-    ld hl, $0fff
+    ;ld hl, $0fff
     ;ld hl, $ffff
+    ld hl, $0aff
     push hl
     pop bc
   
@@ -620,6 +612,39 @@ RdrawLeftSnakeShuffleLoopCol
     ld (hl), a                
     djnz RdrawLeftSnakeShuffleLoopCol
     ret
+
+setRandomFood
+    ; get a random column, then row and set as the food block (136)
+    ; TODO probably need to check if the generated row and column isn't one of the snakes coords!!!
+    
+tryAnotherRCol                             ; generate random number to index shape memory
+    ld a, r                             ; we want a number 0 to 4 inclusive 
+    and %00011111
+    cp 29    
+    jp nc, tryAnotherRCol                  ; loop when nc flag set ie not less than 5 try again    
+    inc a
+    ld (setRandomFoodCOL), a
+    
+tryAnotherRRow                             ; generate random number to index shape memory
+    ld a, r                             ; we want a number 0 to 4 inclusive 
+    and %00011111
+    cp 20    
+    jp nc, tryAnotherRRow                  ; loop when nc flag set ie not less than 5 try again    
+    inc a
+    ld (setRandomFoodROW), a
+    
+    ld a, (setRandomFoodROW)   
+	ld h, a				    ; row set for PRINTAT
+    ld a, (setRandomFoodCOL)
+    ld l, a				    ; column set for PRINTAT
+    
+    push hl  ; push hl to get into bc via the pop, why is ld bc, hl not an instruction? who am I to question :)
+    pop bc
+    call PRINTAT		; ROM routine to set current cursor position, from row b and column e  
+    ld a, SHAPE_CHAR_FOOD
+    call PRINT 
+    
+    ret
     
    
 #include "line2.asm"
@@ -644,8 +669,11 @@ snakeTailIndex      ; this is the index of the last coordinate of the snake, 3 i
     DEFB 0
 snakeTailPlusOne      ; this is the index of the last coordinate of the snake, 3 initially (meaning there are 4 snake blocks)
     DEFB 0    
-snakeCoordTemp    
-    DEFB 0,0
+setRandomFoodCOL
+    DEFB 0
+setRandomFoodROW
+    DEFB 0
+    
 ; the snake can grow to a maximum length of 16 so store 16 row and column positions
 ; to enable it to be undrawn as it moves around. will increase once code works
 ; when we use these we will optimise by index offset of 16 as contiguous in memory

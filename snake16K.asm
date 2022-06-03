@@ -3,7 +3,20 @@
 ;;; It's a clone of snake (in case that wasn't clear from filename;)
 ;;;;;;;;;;;;;;;;;;;;;
 
-; all the includes came from  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
+; KNOWN BUGS
+;       1) sometimes the snake body drops down by on as its moving left or right mid way along
+;          this can cuase an unexpected game over if it hits itself or the edge of play area
+;          other times this leaves a black sqaure in that place and game carries on (snake molting?)
+;       2) when the snake gets longer than about 70 (unsure exact number) after game over the
+;          title screen is corrupted and then pressing s to start causes screen corruption
+;          and the game never starts - must be a memory overrite somewhere :-///
+;       3) sometimes some of the blocks at left edge of the play area go blank
+;       4) no check of the new food appearing in any of the snake body coordinates
+;          which is why have to add two new food each time
+
+
+;  all the includes for base zx81 "memory image" came from  
+;  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
 #include "zx81defs.asm" 
 #include "zx81rom.asm"
 #include "charcodes.asm"
@@ -27,6 +40,8 @@
 #define SNAKE_MOVEMENT_UP 3
 #define SNAKE_MOVEMENT_DOWN 4
 
+#define SNAKE_MAX_LENGTH 190
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp intro_title		; main entry poitn to the code ships the memory definitions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -40,13 +55,8 @@ introWaitLoop_1
 	jp read_start_key
 	
 intro_title
-	call CLS	
-	ld bc,1
-	ld de,titleBanner
-	call printstring	
-	ld bc,34
-	ld de,titleBanner
-	call printstring		
+	call drawInitialScreen  ; clears screen and sets the boarder
+    
 	ld bc,111
 	ld de,title_screen_txt
 	call printstring
@@ -64,14 +74,13 @@ intro_title
 	ld bc,436
 	ld de,last_Score_txt
 	call printstring	
-	;ld b, 14			; b is row to print in
-	;ld c, 13			; c is column
-    ;ld a, (last_score_mem_hund) ; load hundreds
-	;call printByte    
-	;ld b, 14			; b is row to print in
-	;ld c, 15			; c is column
-	;ld a, (last_score_mem_tens) ; load tens		
-	;call printByte	
+	
+    ld bc, 476
+    ld de, last_score_mem_hund ; load address of hundreds
+	call printNumber    
+	ld bc, 478			; bc is offset from start of display
+	ld de, last_score_mem_tens ; load address of  tens		
+	call printNumber	
 	ld bc,537	
 	ld de,credits_and_version_1
 	call printstring		
@@ -79,13 +88,6 @@ intro_title
 	ld de,credits_and_version_2
 	call printstring	
 	
-	ld bc,727
-	ld de,titleBanner
-	call printstring		
-	ld bc,760
-	ld de,titleBanner
-	call printstring	
-
 read_start_key
 	ld a, KEYBOARD_READ_PORT_A_TO_G	
 	in a, (KEYBOARD_READ_PORT)					; read from io port	
@@ -101,16 +103,21 @@ initVariables
     call printstring	
     
     xor a
-    ld (score_mem_tens), a
-    ld bc, 10
+    ld (score_mem_tens),a
+	ld (score_mem_hund),a    
+    
+    ld bc, 12
     ld de, score_mem_tens
+    call printNumber
+    ld bc, 10
+    ld de, score_mem_hund
     call printNumber    
     
     
     ld a, 4 
     ld (snakeTailIndex), a
     
-    ld hl, $0aff
+    ld hl, $07ff
     ld (waitSpeed), hl
     
 
@@ -302,6 +309,11 @@ drawBlock
     sub SHAPE_CHAR_FOOD
     jp nz, noCheck
     
+    ;check snake length not at maximum, if so limit
+    ld a, (snakeTailIndex)
+    cp SNAKE_MAX_LENGTH
+    jp z, noCheck 
+    
     call setRandomFood ; generate more food
     call setRandomFood ; generate more food
     
@@ -309,15 +321,28 @@ drawBlock
     dec hl              
     ld (waitSpeed), hl
     
-    ld a, (score_mem_tens)
-    add a, 1
-    daa
-    ld (score_mem_tens), a
-    
-    ld bc, 10
+    ld a,(score_mem_tens)				; add one to score, scoring is binary coded decimal (BCD)
+	add a,1	
+	daa									; z80 daa instruction realigns for BCD after add or subtract
+	ld (score_mem_tens),a	
+	cp 153
+	jr z, addOneToHund
+	jr skipAddHund
+addOneToHund
+	ld a, 0
+	ld (score_mem_tens), a
+    ld a, (score_mem_hund)
+	add a, 1
+	daa
+	ld (score_mem_hund), a
+skipAddHund	
+
+    ld bc, 12
     ld de, score_mem_tens
     call printNumber
-    
+    ld bc, 10
+    ld de, score_mem_hund
+    call printNumber    
     ; we got the food, so increase length of the snake...    
     ; ...but we also need to set the new coordinates for the tail based on the direction
     ; if moving down new tail is same col, last tail row-1
@@ -343,8 +368,8 @@ drawBlock
     cp SNAKE_MOVEMENT_DOWN
     jp z, newcorrdForDown
     
-    ret
-    jp noCheck  ; should never get here as always moving
+    ret   ; should never get here as always moving
+    ;jp noCheck  
     
 newcorrdForLeft
     ld a, (snakeTailIndex)        
@@ -520,6 +545,11 @@ gameOver
     ld de,game_over_txt   
     call printstring	
 
+	ld a, (score_mem_tens) ; load tens into last score		
+	ld (last_score_mem_tens),a 
+	ld a, (score_mem_hund) ; load hundreds into last score	
+	ld (last_score_mem_hund),a	
+    
     ld hl, $ffff
     push hl
     pop bc
@@ -771,31 +801,41 @@ setRandomFoodROW
 waitSpeed
     DEFB 0,0
 score_mem_tens
-    DEFB 0,0
-; the snake can grow to a maximum length of 16 so store 16 row and column positions
-; to enable it to be undrawn as it moves around. will increase once code works
-; when we use these we will optimise by index offset of 16 as contiguous in memory
+	DEFB 0
+score_mem_hund
+	DEFB 0
+high_score_mem_tens
+	DEFB 0
+high_score_mem_hund
+	DEFB 0		
+last_score_mem_tens
+	DEFB 0
+last_score_mem_hund
+	DEFB 0	
+; the snake can grow to a maximum length of 192 so store  192 row and column positions
+; and movement directions to enable it to be undrawn properly as it moves around.
 
-; the intention is to delete (on screen) the tail of the snake which is at whatever the length is set to
-; position and then draw that.
-
-;; eventually we'll add code to make the snake longer when items are collected (eaten), and in that case
-;; we'll have to store a tail index, initially 4 lnog
-snakeMovementFlags           ; this keeps track of the direction in force at each snake body position
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-    DEFB 0,0,0,0,0,0    
+snakeMovementFlags       ; this keeps track of the direction in force at each snake body position
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
 snakeCoordsCol            
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-    DEFB 0,0,0,0,0,0    
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
 snakeCoordsRow    
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-    DEFB 0,0,0,0,0,0    
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
 
 title_screen_txt
 	DEFB	_Z,_X,_8,_1,__,_S,_N,_A,_K,_E,$ff
@@ -810,14 +850,10 @@ last_Score_txt
 	DEFB	21,21,21,21,_L,_A,_S,_T,__,__,_S,_C,_O,_R,_E,21,21,21,21,$ff	
 high_Score_txt
 	DEFB	21,21,21,21,_H,_I,_G,_H,__,__,_S,_C,_O,_R,_E,21,21,21,21,$ff		
-titleBanner		
-	DEFB	4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,$ff		
 credits_and_version_1
 	DEFB _B,_Y,__,_A,__,_P,_I,_L,_K,_I,_N,_G,_T,_O,_N,$ff
 credits_and_version_2
-	DEFB __,__,__,__,__,__,_2,_0,_2,_2,__,__,__,__,__,$ff
-    
-    
+	DEFB __,__,__,__,__,__,_2,_0,_2,_2,__,__,__,__,__,$ff    
 snakeCoordsColTemp
     DEFB 0
 snakeCoordsRowTemp

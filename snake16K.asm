@@ -318,8 +318,7 @@ drawBlock
     
     inc a
     inc a
-    ld (foodCount), a   ; save the number of "foods" on screen
-    ; check the food count, we want 3 onscreen at once
+    ld (foodCount), a   ; save the "food" on screen
     call setRandomFood ; generate more food
     call setRandomFood ; generate more food
     

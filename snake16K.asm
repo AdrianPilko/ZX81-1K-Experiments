@@ -121,7 +121,7 @@ initVariables
     call printNumber    
     
     
-    ld a, 4 
+    ld a, 3 
     ld (snakeTailIndex), a
     ld (foodCount), a
     
@@ -134,7 +134,6 @@ initVariables
     ld (snakeCoordsRow+1), a    
     ld (snakeCoordsRow+2), a    
     ld (snakeCoordsRow+3), a    
-    ld (snakeCoordsRow+4), a    
     
     ld a, 15			  
     ld (snakeCoordsCol), a
@@ -144,19 +143,13 @@ initVariables
     ld (snakeCoordsCol+2), a
     dec a
     ld (snakeCoordsCol+3), a
-    dec a
-    ld (snakeCoordsCol+4), a
-    
+   
     ; default movement is right
     ld a, SNAKE_MOVEMENT_RIGHT
     ld (snakeMovementFlags), a
     ld (snakeMovementFlags+1), a
     ld (snakeMovementFlags+2), a
     ld (snakeMovementFlags+3), a
-    ld (snakeMovementFlags+4), a
-    ld (snakeMovementFlags+5), a
-    ld (snakeMovementFlags+6), a
- 
   
     
     ld a, SNAKE_MOVEMENT_RIGHT
@@ -276,10 +269,7 @@ drawUp
     cp 0    
     jp z, drawBlock
     call shuffleSnakeInRow
-    ld hl, (absoluteScreenMemoryPosition)
-    xor a
-    push hl
-    pop bc
+    ld hl, (absoluteScreenMemoryPosition)    
     ld de, 33    
     sbc hl,de
     ld (absoluteScreenMemoryPosition), hl    
@@ -335,7 +325,7 @@ drawBlock
     ld a, (foodCount)    
     dec a    
     ld (foodCount), a
-    cp 3
+    cp 2
     jp z, skipAddingFood
     
     inc a
@@ -380,14 +370,15 @@ skipAddHund
     ; if moving right new tail is same row, last tail col-1    
 
     ;; the new coordinate  doesn't depend on the current movement, but the 
-    ;; direction the previous tail position was moving in
-    ;;ld a, (movedFlag)
-    ld hl, snakeMovementFlags                   
+    ;; direction the previous tail position was moving in    
+    ld a, (snakeTailIndex)        
+    ld b, a     ; for some reason get a MS byte not used unless you go via a ??      
+    ld hl, snakeMovementFlags                       
     ld d, 0
-    ld a, (snakeTailIndex)     
-    ld e, a
+    ld e, b
     add hl, de
-    ld a, (hl)    
+    ld a, (hl)   
+    
     cp SNAKE_MOVEMENT_LEFT
     jp z, newcorrdForLeft
     cp SNAKE_MOVEMENT_RIGHT
@@ -420,8 +411,7 @@ newcorrdForLeft
     ld a, (hl)
     inc a           ; going left new coord is current tail plus one
     inc hl          ; to push coord on one
-    ld (hl), a      ; make new coord smae as previous
-            
+    ld (hl), a      ; make new coord smae as previous 
     jp afterCoordAdd
 
 newcorrdForRight
@@ -442,7 +432,7 @@ newcorrdForRight
     ld e, b
     add hl, de    
     ld a, (hl)
-    dec a           ; going left new coord is current tail minus one
+    dec a           ; going right new coord is current tail minus one
     inc hl          ; to push coord on one
     ld (hl), a      ; make new coord smae as previous
     jp afterCoordAdd
@@ -468,10 +458,6 @@ newcorrdForUp ; if moving up new tail is same col, last tail row+1
     inc a           ; going up new row coord is current tail plus one
     inc hl          ; to push coord on one
     ld (hl), a      ; make new coord smae as previous
-    inc a           ; we have to set the coord after the snakeTailIndex to valid tro prevent extra block dropping 
-    inc hl          ; to push coord on one
-    ld (hl), a      ; make new coord smae as previous    
-    
     jp afterCoordAdd
 
 newcorrdForDown    ; if moving down new tail is same col, last tail row-1
@@ -495,18 +481,12 @@ newcorrdForDown    ; if moving down new tail is same col, last tail row-1
     dec a           ; going down new row coord is current tail minus one
     inc hl          ; to push coord on one
     ld (hl), a      ; make new coord smae as previous    
-    dec a           ; we have to set the coord after the snakeTailIndex to valid tro prevent extra block dropping 
-    inc hl          ; to push coord on one
-    ld (hl), a      ; make new coord smae as previous    
-    ; don't need jp afterCoordAdd as next is the same
-    
+
 afterCoordAdd    
     ld a, (snakeTailIndex)
     inc a
     ld (snakeTailIndex), a
-
-    
-    
+  
     ; drop through
 
 noCheck  
@@ -667,7 +647,6 @@ shuffleSnakeInCol
     inc a
     ld b, a 
     ;; loop for b
-    
 CdrawLeftSnakeShuffleLoopCol    
     ld hl, snakeCoordsCol                        
     ld d, 0
@@ -698,8 +677,6 @@ CdrawLeftSnakeShuffleLoopCol
     ld a, (snakeTailIndex)    
     inc a
     ld b, a 
-    ;; loop for b
-    
 CdrawLeftSnakeShuffleLoopRow   
     ld hl, snakeCoordsRow                       
     ld d, 0
@@ -751,8 +728,6 @@ RdrawLeftSnakeShuffleLoopRow
     ld a, (snakeTailIndex)    
     inc a
     ld b, a 
-    ;; loop for b
-    
 RdrawLeftSnakeShuffleLoopCol   
     ld hl, snakeCoordsCol                       
     ld d, 0
@@ -769,20 +744,20 @@ setRandomFood
     ; get a random column, then row and set as the food block (136)
     ; TODO probably need to check if the generated row and column isn't one of the snakes coords!!!
     
-tryAnotherRCol                             ; generate random number to index shape memory
-    ld a, r                             ; we want a number 0 to 4 inclusive 
+tryAnotherRCol                          ; generate random number to index shape memory
+    ld a, r                             
     and %00011111
     cp 29    
-    jp nc, tryAnotherRCol                  ; loop when nc flag set ie not less than 5 try again    
-    inc a
+    jp nc, tryAnotherRCol               ; loop when nc flag set ie not less than 5 try again    
+    inc a                               ; inc guarntees range 1 to 30 for col
     ld (setRandomFoodCOL), a
     
-tryAnotherRRow                             ; generate random number to index shape memory
-    ld a, r                             ; we want a number 0 to 4 inclusive 
+tryAnotherRRow                          ; generate random number to index shape memory
+    ld a, r                             
     and %00011111
     cp 20    
-    jp nc, tryAnotherRRow                  ; loop when nc flag set ie not less than 5 try again    
-    inc a
+    jp nc, tryAnotherRRow               ; loop when nc flag set ie not less than 5 try again    
+    inc a                               ; inc guarntees range 1 to 21 for row 
     ld (setRandomFoodROW), a
     
     ld a, (setRandomFoodROW)   

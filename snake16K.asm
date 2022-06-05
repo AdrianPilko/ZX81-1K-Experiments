@@ -23,6 +23,8 @@
 #include "zx81sys.asm"                ;; removed some of unneeded definitions
 #include "line1.asm"
 
+
+#define KEYBOARD_READ_PORT_P_TO_Y	$DF
 ; for start key 
 #define KEYBOARD_READ_PORT_A_TO_G	$FD
 ; keyboard port for shift key to v
@@ -63,10 +65,15 @@ intro_title
 	ld bc,202    
 	ld de,keys_screen_txt_1
 	call printstring		
+    
+    
 
 	ld bc,246
 	ld de,keys_screen_txt_2
 	call printstring		
+    ld bc,280
+	ld de,keys_screen_txt_3
+	call printstring
     
 	ld bc,337
 	ld de,game_objective_txt
@@ -178,6 +185,13 @@ initVariables
 main
     ; read the keyboard input and adust the offset     
     
+    ; check for pause key pressed "P"    
+    ld a, KEYBOARD_READ_PORT_P_TO_Y
+    in a, (KEYBOARD_READ_PORT)					; read from io port	
+    bit 0, a                            ; "P"
+    jp z, goIntoPause           ; only returns from pause when p is pressed again
+afterPause    
+    
     ld a, (movedFlag)   ;  check that we don't double back on ourselves!
     cp SNAKE_MOVEMENT_RIGHT
     jp z, skipCheckKeyLeft
@@ -234,10 +248,8 @@ drawLeft
     ld a, (snakeCoordsCol)    
     dec a    
     cp 0
-    jp z, drawBlock    
-    
+    jp z, drawBlock   
     call shuffleSnakeInCol
-    
     ld hl, (absoluteScreenMemoryPosition)
     dec hl    
     ld (absoluteScreenMemoryPosition), hl        
@@ -250,9 +262,7 @@ drawRight
     inc a
     cp 31    
     jp z, drawBlock
-
-    call shuffleSnakeInCol    
-   
+    call shuffleSnakeInCol     
     ld hl, (absoluteScreenMemoryPosition)
     inc hl    
     ld (absoluteScreenMemoryPosition), hl    
@@ -265,9 +275,7 @@ drawUp
     dec a    
     cp 0    
     jp z, drawBlock
-    
     call shuffleSnakeInRow
-        
     ld hl, (absoluteScreenMemoryPosition)
     xor a
     push hl
@@ -283,9 +291,7 @@ drawDown
     inc a
     cp 22
     jp z, drawBlock    
-
     call shuffleSnakeInRow
-
     ld hl, (absoluteScreenMemoryPosition)
     ld bc, 33
     add hl, bc
@@ -791,6 +797,22 @@ tryAnotherRRow                             ; generate random number to index sha
     call PRINT 
     
     ret
+
+goIntoPause
+	ld bc,$0fff ;max waiting time
+pauseWaitLoop       ; needs a wait otherwise the key press is still down reads to quick
+	dec bc
+	ld a,b
+	or c
+	jr nz, pauseWaitLoop
+
+    ld a, KEYBOARD_READ_PORT_P_TO_Y
+    in a, (KEYBOARD_READ_PORT)					; read from io port	
+    bit 0, a                            ; "P"
+    jp z, returnFromPause           ; only returns from pause when p is pressed again
+    jr goIntoPause
+returnFromPause    
+    jp afterPause
     
    
 #include "line2.asm"
@@ -866,6 +888,8 @@ keys_screen_txt_1
 	DEFB	_S,__,_T,_O,__,_S,_T,_A,_R,_T,26,__,_Z,__,_L,_E,_F,_T,26,__,_M,__,_R,_I,_G,_H,_T,$ff
 keys_screen_txt_2
 	DEFB	__,_X,__,_U,_P,26,__,__,__,_N,__,_D,_O,_W,_N,$ff    
+keys_screen_txt_3
+	DEFB	_P,__,_P,_A,_U,_S,_E,$ff    
 game_objective_txt
 	DEFB	_G,_R,_O,_W,__,_S,_N,_A,_K,_E,__,_A,_N,_D,__,_A,_V,_O,_I,_D,$ff
 	

@@ -7,11 +7,12 @@
 ;       1) sometimes the snake body drops down by on as its moving left or right mid way along
 ;          this can cuase an unexpected game over if it hits itself or the edge of play area
 ;          other times this leaves a black sqaure in that place and game carries on (snake molting?)
+;          Found that in latest version this always happens 20characters from the left on top row
+;          even if no food collected??!
 ;       2) when the snake gets longer than about 70 (unsure exact number) after game over the
 ;          title screen is corrupted and then pressing s to start causes screen corruption
 ;          and the game never starts - must be a memory overrite somewhere :-///
-;       3) sometimes some of the blocks at left edge of the play area go blank
-;       4) no check of the new food appearing in any of the snake body coordinates
+;       3) no check of the new food appearing in any of the snake body coordinates
 ;          which is why have to add two new food each time
 
 
@@ -34,8 +35,9 @@
 ; starting port numbner for keyboard, is same as first port for shift to v
 #define KEYBOARD_READ_PORT $FE 
 
-#define SHAPE_CHAR_0   128        ; black square
+#define SHAPE_CHAR_SNAKE   128        ; black square
 #define SHAPE_CHAR_FOOD 136
+#define SHAPE_CHAR_WALL 189
 #define SHAPE_CHAR_NO_PRINT   0        ; black square
 #define SNAKE_MOVEMENT_LEFT 1
 #define SNAKE_MOVEMENT_RIGHT 2
@@ -104,6 +106,7 @@ read_start_key
 
 initVariables    
     call drawInitialScreen
+    call drawAdditionalWalls
     
     ld bc,3
     ld de,scoreText   
@@ -124,11 +127,10 @@ initVariables
     ld a, 3 
     ld (snakeTailIndex), a    
     ld (foodCount), a
-    inc a
     daa
     ld (snakeLength), a
     
-    ld hl, $0aff
+    ld hl, $04ff
     ld (waitSpeed), hl
     
 
@@ -171,11 +173,11 @@ initVariables
     add hl, de
     ld (absoluteScreenMemoryPosition), hl    
     ld hl, (absoluteScreenMemoryPosition)
-    ld (hl), SHAPE_CHAR_0        ; draw inital snake
+    ld (hl), SHAPE_CHAR_SNAKE        ; draw inital snake
     dec hl    
-    ld (hl), SHAPE_CHAR_0        ; draw inital snake
+    ld (hl), SHAPE_CHAR_SNAKE        ; draw inital snake
     dec hl
-    ld (hl), SHAPE_CHAR_0        ; draw inital snake
+    ld (hl), SHAPE_CHAR_SNAKE        ; draw inital snake
 
     ; default two more food so is always 4 on screen at any one time
     call setRandomFood
@@ -189,7 +191,6 @@ main
     ld bc, 20
     ; copy snake length
     ld a, (snakeTailIndex)
-    inc a       ; of course the length of the snake is one more than the zero based tail index
     daa         ; make it into a binary coded decimal "human" readible number
     ld (snakeLength), a
     ld de, snakeLength ; print the length of the snake (mainly for debug)
@@ -318,11 +319,15 @@ drawBlock
     ;;;;;;;;;;;;;;;;;;
     ld hl, (absoluteScreenMemoryPosition)
    
+    ;xor a           ; zero a and clear flags
+    ;ld a, (hl)                 
+    ;sub SHAPE_CHAR_SNAKE    
+    ;jp z, gameOver
     xor a           ; zero a and clear flags
-    ld a, (hl)
-    sub SHAPE_CHAR_0    
+    ld a, (hl)    
+    sub SHAPE_CHAR_WALL
     jp z, gameOver
-
+    
 ;    di              ; disable interrupts
 ;    LD A,0          ; disable NMI for DEBUG only
 ;    OUT ($FD),A     ; disable NMI for DEBUG only
@@ -350,6 +355,7 @@ drawBlock
     inc a
     inc a
     ld (foodCount), a   ; save the "food" on screen
+    call setRandomFood ; generate more food
     call setRandomFood ; generate more food
     call setRandomFood ; generate more food
     
@@ -649,11 +655,11 @@ drawInitialScreen
 drawLineZeroAndLast         ; draw the boarder at top and bottom
     ld hl, Display+1    
     add hl, de    
-    ld (hl), 189
+    ld (hl), SHAPE_CHAR_WALL
     push de
     ld de, 726
     add hl, de    
-    ld (hl), 189   
+    ld (hl), SHAPE_CHAR_WALL   
     pop de
     inc de
     ld a, 32
@@ -672,6 +678,21 @@ drawColZero
     djnz drawColZero
 
     ret
+
+
+drawAdditionalWalls
+    ld b, 10            ;; best way to just draw column down each side of screen
+    ld de, 31
+    ld hl, Display+412
+drawAdditionalWalls_loop      
+    ld (hl), SHAPE_CHAR_WALL          
+    add hl, de      
+    inc hl    
+    inc hl
+    djnz drawAdditionalWalls_loop
+
+    ret
+
 
 ;;;;;;;;;;;;;;;;;;;;; SHUFFLE SNAKE IN COL    
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
@@ -731,6 +752,7 @@ shuffleSnakeInRow
     ld (snakeCoordsRowTemp), a          ; save the new position of the head of the snake        
     ld a, (snakeTailIndex)        
     inc a
+    inc a
     ld b, a 
     ;; loop for b
 RdrawLeftSnakeShuffleLoopRow
@@ -761,6 +783,7 @@ RdrawLeftSnakeShuffleLoopRow
     ld (snakeMovementFlags), a    
 
     ld a, (snakeTailIndex)    
+    inc a
     inc a
     ld b, a 
 RdrawLeftSnakeShuffleLoopCol   
@@ -831,12 +854,8 @@ game_over_txt
 	DEFB	_G,_A,_M,_E,__,_O,_V,_E,_R,$ff 
 scoreText    
     DEFB	_S,_C,_O,_R,_E,__,__,$ff 
-;first_line_a
-;    DEFB _L,_E,_F,_T,__,_Z,__,_R,_I,_G,_H,_T,$ff 
-;first_line_b    
-;    DEFB __,_M,__,_U,_P,__,_X,__,_D,_O,_W,_N,__,_N,$ff 
 shapeSet
-    DEFB SHAPE_CHAR_0
+    DEFB SHAPE_CHAR_SNAKE
 shapeOnFlag
     DEFB 0
 movedFlag

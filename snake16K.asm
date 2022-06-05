@@ -102,9 +102,9 @@ initVariables
     ld de,scoreText   
     call printstring	
     
-    xor a
+    xor a           ; xor a is quickest way to zero a
     ld (score_mem_tens),a
-	ld (score_mem_hund),a    
+	ld (score_mem_hund),a       
     
     ld bc, 12
     ld de, score_mem_tens
@@ -116,6 +116,7 @@ initVariables
     
     ld a, 4 
     ld (snakeTailIndex), a
+    ld (foodCount), a
     
     ld hl, $07ff
     ld (waitSpeed), hl
@@ -173,15 +174,6 @@ initVariables
     call setRandomFood
     call setRandomFood
     call setRandomFood
-    ;ld hl, Display 
-    ;ld de, 550
-    ;add hl, de
-    ;ld (hl), 136    ; this is the first food for snake, and as a test before random
-
-    ;ld hl, Display 
-    ;ld de, 207
-    ;add hl, de
-    ;ld (hl), 136    ; this is the first food for snake, and as a test before random
     
 main
     ; read the keyboard input and adust the offset     
@@ -291,6 +283,8 @@ drawBlock
     cp 0
     jp z, noCheck
 
+    ;;; this means we've hit something (the wall, the snake itself, or food)
+    ;;;;;;;;;;;;;;;;;;
     ld hl, (absoluteScreenMemoryPosition)
    
     xor a           ; zero a and clear flags
@@ -309,13 +303,27 @@ drawBlock
     sub SHAPE_CHAR_FOOD
     jp nz, noCheck
     
+    ;;;; we've hit food, great!
+    
     ;check snake length not at maximum, if so limit
     ld a, (snakeTailIndex)
     cp SNAKE_MAX_LENGTH
     jp z, noCheck 
+       
+    ld a, (foodCount)    
+    dec a    
+    ld (foodCount), a
+    cp 3
+    jp z, skipAddingFood
     
+    inc a
+    inc a
+    ld (foodCount), a   ; save the number of "foods" on screen
+    ; check the food count, we want 3 onscreen at once
     call setRandomFood ; generate more food
     call setRandomFood ; generate more food
+    
+skipAddingFood
     
     ld hl, (waitSpeed)  ; speed up by one now we have got some more food
     dec hl              
@@ -857,6 +865,8 @@ credits_and_version_2
 snakeCoordsColTemp
     DEFB 0
 snakeCoordsRowTemp
+    DEFB 0
+foodCount
     DEFB 0
    
 #include "endbasic.asm"

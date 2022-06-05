@@ -118,7 +118,7 @@ initVariables
     ld (snakeTailIndex), a
     ld (foodCount), a
     
-    ld hl, $07ff
+    ld hl, $03ff
     ld (waitSpeed), hl
     
 
@@ -177,24 +177,40 @@ initVariables
     
 main
     ; read the keyboard input and adust the offset     
+    
+    ld a, (movedFlag)   ;  check that we don't double back on ourselves!
+    cp SNAKE_MOVEMENT_RIGHT
+    jp z, skipCheckKeyLeft
     ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			
     in a, (KEYBOARD_READ_PORT)					; read from io port	
     bit 1, a                            ; Z
     jp z, drawLeft								
+skipCheckKeyLeft  
+    ld a, (movedFlag)   ;  check that we don't double back on ourselves!
+    cp SNAKE_MOVEMENT_LEFT
+    jp z, skipCheckKeyRight
     ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 2, a						    ; M
-    jp z, drawRight							    ; jump to move shape right	
+    jp z, drawRight							    ; jump to move shape right	    
 
+skipCheckKeyRight    
+    ld a, (movedFlag)   ;  check that we don't double back on ourselves!
+    cp SNAKE_MOVEMENT_DOWN
+    jp z, skipCheckKeyUp    
     ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 2, a					        ; X
-    jp z, drawUp	
-    
+    jp z, drawUp    
+skipCheckKeyUp  
+    ld a, (movedFlag)   ;  check that we don't double back on ourselves!
+    cp SNAKE_MOVEMENT_UP
+    jp z, skipCheckKeyDown  
     ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
     bit 3, a					        ; N
     jp z, drawDown
+skipCheckKeyDown
 
     ;; we also have to keep track of the movement direction of the tail, which can clearly
     ;; be different to the head

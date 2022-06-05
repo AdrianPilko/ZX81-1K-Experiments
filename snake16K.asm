@@ -122,8 +122,11 @@ initVariables
     
     
     ld a, 3 
-    ld (snakeTailIndex), a
+    ld (snakeTailIndex), a    
     ld (foodCount), a
+    inc a
+    daa
+    ld (snakeLength), a
     
     ld hl, $0aff
     ld (waitSpeed), hl
@@ -134,6 +137,8 @@ initVariables
     ld (snakeCoordsRow+1), a    
     ld (snakeCoordsRow+2), a    
     ld (snakeCoordsRow+3), a    
+    ld (snakeCoordsRow+4), a    
+    ld (snakeCoordsRow+5), a 
     
     ld a, 15			  
     ld (snakeCoordsCol), a
@@ -143,13 +148,19 @@ initVariables
     ld (snakeCoordsCol+2), a
     dec a
     ld (snakeCoordsCol+3), a
-   
+    dec a
+    ld (snakeCoordsCol+4), a
+    dec a
+    ld (snakeCoordsCol+5), a
+    
     ; default movement is right
     ld a, SNAKE_MOVEMENT_RIGHT
     ld (snakeMovementFlags), a
     ld (snakeMovementFlags+1), a
     ld (snakeMovementFlags+2), a
     ld (snakeMovementFlags+3), a
+    ld (snakeMovementFlags+4), a
+    ld (snakeMovementFlags+5), a
   
     
     ld a, SNAKE_MOVEMENT_RIGHT
@@ -165,8 +176,6 @@ initVariables
     ld (hl), SHAPE_CHAR_0        ; draw inital snake
     dec hl
     ld (hl), SHAPE_CHAR_0        ; draw inital snake
-    dec hl
-    ld (hl), SHAPE_CHAR_0        ; draw inital snake
 
     ; default two more food so is always 4 on screen at any one time
     call setRandomFood
@@ -176,6 +185,16 @@ initVariables
     call setRandomFood
     
 main
+
+    ld bc, 20
+    ; copy snake length
+    ld a, (snakeTailIndex)
+    inc a       ; of course the length of the snake is one more than the zero based tail index
+    daa         ; make it into a binary coded decimal "human" readible number
+    ld (snakeLength), a
+    ld de, snakeLength ; print the length of the snake (mainly for debug)
+	call printNumber    
+
     ; read the keyboard input and adust the offset     
     
     ; check for pause key pressed "P"    
@@ -303,7 +322,7 @@ drawBlock
     ld a, (hl)
     sub SHAPE_CHAR_0    
     jp z, gameOver
-    
+
 ;    di              ; disable interrupts
 ;    LD A,0          ; disable NMI for DEBUG only
 ;    OUT ($FD),A     ; disable NMI for DEBUG only
@@ -362,6 +381,7 @@ skipAddHund
     ld bc, 10
     ld de, score_mem_hund
     call printNumber    
+    
     ; we got the food, so increase length of the snake...    
     ; ...but we also need to set the new coordinates for the tail based on the direction
     ; if moving down new tail is same col, last tail row-1
@@ -412,6 +432,9 @@ newcorrdForLeft
     inc a           ; going left new coord is current tail plus one
     inc hl          ; to push coord on one
     ld (hl), a      ; make new coord smae as previous 
+    inc a           ; going left new coord is current tail plus one
+    inc hl          ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous    
     jp afterCoordAdd
 
 newcorrdForRight
@@ -435,6 +458,9 @@ newcorrdForRight
     dec a           ; going right new coord is current tail minus one
     inc hl          ; to push coord on one
     ld (hl), a      ; make new coord smae as previous
+    dec a           ; going right new coord is current tail minus one
+    inc hl          ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous    
     jp afterCoordAdd
 
 newcorrdForUp ; if moving up new tail is same col, last tail row+1
@@ -458,6 +484,9 @@ newcorrdForUp ; if moving up new tail is same col, last tail row+1
     inc a           ; going up new row coord is current tail plus one
     inc hl          ; to push coord on one
     ld (hl), a      ; make new coord smae as previous
+    inc a           ; going up new row coord is current tail plus one
+    inc hl          ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous    
     jp afterCoordAdd
 
 newcorrdForDown    ; if moving down new tail is same col, last tail row-1
@@ -482,6 +511,10 @@ newcorrdForDown    ; if moving down new tail is same col, last tail row-1
     inc hl          ; to push coord on one
     ld (hl), a      ; make new coord smae as previous    
 
+    dec a           ; going down new row coord is current tail minus one
+    inc hl          ; to push coord on one
+    ld (hl), a      ; make new coord smae as previous    
+
 afterCoordAdd    
     ld a, (snakeTailIndex)
     inc a
@@ -490,20 +523,19 @@ afterCoordAdd
     ; drop through
 
 noCheck  
-    ld a, (movedFlag)
-    cp 0
-    jp z, NOwipeLastTailPreviousPos    
-    
+
+    ;; here we're wiping the tail
     ld hl, snakeCoordsRow
     ld b, 0
     ld a, (snakeTailIndex) 
     ld c, a
     add hl, bc
-    inc hl          ; set "index" to one past the end
     ld a, (hl)
-   
-    ;ld a, (snakeCoordsRow+5)   
     ld h, a				    ; row set for PRINTAT
+    cp 0
+    jp nz, noErrorRow
+    ret         ; the column should never be zero
+noErrorRow    
     
     push hl
     ld hl, snakeCoordsCol
@@ -511,15 +543,18 @@ noCheck
     ld a, (snakeTailIndex) 
     ld c, a
     add hl, bc
-    inc hl          ; set "index" to one past the end
     ld a, (hl)
     pop hl
-    ;ld a, (snakeCoordsCol+5)
     ld l, a				    ; column set for PRINTAT
-    
+    cp 0
+    jp nz, noErrorCol
+    ret         ; the column should never be zero
+noErrorCol    
     push hl  ; push hl to get into bc via the pop, why is ld bc, hl not an instruction? who am I to question :)
     pop bc
+       
     call PRINTAT		; ROM routine to set current cursor position, from row b and column e  
+    
     ld a, SHAPE_CHAR_NO_PRINT
     call PRINT     
     
@@ -881,6 +916,8 @@ snakeCoordsColTemp
 snakeCoordsRowTemp
     DEFB 0
 foodCount
+    DEFB 0
+snakeLength
     DEFB 0
    
 #include "endbasic.asm"

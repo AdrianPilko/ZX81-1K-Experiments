@@ -118,7 +118,7 @@ initVariables
     ld (snakeTailIndex), a
     ld (foodCount), a
     
-    ld hl, $03ff
+    ld hl, $0aff
     ld (waitSpeed), hl
     
 

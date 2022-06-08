@@ -319,10 +319,10 @@ drawBlock
     ;;;;;;;;;;;;;;;;;;
     ld hl, (absoluteScreenMemoryPosition)
    
-    ;xor a           ; zero a and clear flags
-    ;ld a, (hl)                 
-    ;sub SHAPE_CHAR_SNAKE    
-    ;jp z, gameOver
+    xor a           ; zero a and clear flags
+    ld a, (hl)                 
+    sub SHAPE_CHAR_SNAKE    
+    jp z, gameOver
     xor a           ; zero a and clear flags
     ld a, (hl)    
     sub SHAPE_CHAR_WALL

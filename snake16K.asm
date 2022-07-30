@@ -35,7 +35,7 @@
 ; starting port numbner for keyboard, is same as first port for shift to v
 #define KEYBOARD_READ_PORT $FE 
 
-#define SHAPE_CHAR_SNAKE   128        ; black square
+#define SHAPE_CHAR_SNAKE   151        ; black square
 #define SHAPE_CHAR_FOOD 136
 #define SHAPE_CHAR_WALL 189
 #define SHAPE_CHAR_NO_PRINT   0        ; black square
@@ -314,9 +314,7 @@ drawBlock
     ld a, (movedFlag)
     cp 0
     jp z, noCheck
-
-    ;;; this means we've hit something (the wall, the snake itself, or food)
-    ;;;;;;;;;;;;;;;;;;
+    
     ld hl, (absoluteScreenMemoryPosition)
    
     xor a           ; zero a and clear flags
@@ -327,7 +325,8 @@ drawBlock
     ld a, (hl)    
     sub SHAPE_CHAR_WALL
     jp z, gameOver
-    
+
+; to enable "halt" for debug uncomment next 4 rows
 ;    di              ; disable interrupts
 ;    LD A,0          ; disable NMI for DEBUG only
 ;    OUT ($FD),A     ; disable NMI for DEBUG only
@@ -576,9 +575,9 @@ NOwipeLastTailPreviousPos
     ld a, (shapeSet)
     call PRINT 
   
-    ;ld hl, $0fff
+    ld hl, $4fff
     ;ld hl, $ffff
-    ld hl, (waitSpeed)
+    ;ld hl, (waitSpeed)
     ;ld hl, $0fff
     push hl
     pop bc

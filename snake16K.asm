@@ -4,11 +4,14 @@
 ;;;;;;;;;;;;;;;;;;;;;
 
 ; KNOWN BUGS
-;       1) sometimes the snake body drops down by on as its moving left or right mid way along
-;          this can cuase an unexpected game over if it hits itself or the edge of play area
+;       1) sometimes the snake body drops down by one as its moving left or right mid way along
+;          this can cause an unexpected game over if it hits itself or the edge of play area
 ;          other times this leaves a black sqaure in that place and game carries on (snake molting?)
 ;          Found that in latest version this always happens 20characters from the left on top row
-;          even if no food collected??!
+;          even if no food collected??! If moving down over that column (same line as the vertical wall)
+;          then the bug causes the snake head to jump over itself then immediately crash into itself
+;          UPDATE: have narrowed the bug to certain row col postitions, in particular col 15, row 6 (indexed from 0)
+;                      WHAT COULD POSSIBLY BE SPECIAL ABOUT THAT LOCATION (6 * 33) + 15 = 213) ???????
 ;       2) when the snake gets longer than about 70 (unsure exact number) after game over the
 ;          title screen is corrupted and then pressing s to start causes screen corruption
 ;          and the game never starts - must be a memory overrite somewhere :-///
@@ -16,12 +19,19 @@
 ;          which is why have to add two new food each time
 
 
+; to enable "halt" for debug uncomment next 4 rows
+;    di              ; disable interrupts
+;    LD A,0          ; disable NMI for DEBUG only
+;    OUT ($FD),A     ; disable NMI for DEBUG only
+;here__    
+;    jp here__
+
 ;  all the includes for base zx81 "memory image" came from  
 ;  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
 #include "zx81defs.asm" 
 #include "zx81rom.asm"
 #include "charcodes.asm"
-#include "zx81sys.asm"                ;; removed some of unneeded definitions
+#include "zx81sys.asm"
 #include "line1.asm"
 
 
@@ -35,7 +45,18 @@
 ; starting port numbner for keyboard, is same as first port for shift to v
 #define KEYBOARD_READ_PORT $FE 
 
-#define SHAPE_CHAR_SNAKE   151        ; black square
+;#define SHAPE_CHAR_SNAKE   151        ; black square
+;#define SHAPE_CHAR_SNAKE_UP   3        
+;#define SHAPE_CHAR_SNAKE_DOWN   131    
+;#define SHAPE_CHAR_SNAKE_LEFT   5      
+;##define SHAPE_CHAR_SNAKE_RIGHT   133   
+
+
+#define SHAPE_CHAR_SNAKE_UP   156
+#define SHAPE_CHAR_SNAKE_DOWN   157    
+#define SHAPE_CHAR_SNAKE_LEFT   158      
+#define SHAPE_CHAR_SNAKE_RIGHT   159   
+
 #define SHAPE_CHAR_FOOD 136
 #define SHAPE_CHAR_WALL 189
 #define SHAPE_CHAR_NO_PRINT   0        ; black square
@@ -163,6 +184,15 @@ initVariables
     ld (snakeMovementFlags+3), a
     ld (snakeMovementFlags+4), a
     ld (snakeMovementFlags+5), a
+    
+    ld a,SHAPE_CHAR_SNAKE_RIGHT
+    ld (snakeCharsToPrint), a
+    ld (snakeCharsToPrint+1), a
+    ld (snakeCharsToPrint+2), a
+    xor a
+    ld (snakeCharsToPrint+3), a
+    ld (snakeCharsToPrint+4), a
+    ld (snakeCharsToPrint+5), a
   
     
     ld a, SNAKE_MOVEMENT_RIGHT
@@ -173,11 +203,11 @@ initVariables
     add hl, de
     ld (absoluteScreenMemoryPosition), hl    
     ld hl, (absoluteScreenMemoryPosition)
-    ld (hl), SHAPE_CHAR_SNAKE        ; draw inital snake
+    ld (hl), SHAPE_CHAR_SNAKE_RIGHT        ; draw inital snake
     dec hl    
-    ld (hl), SHAPE_CHAR_SNAKE        ; draw inital snake
+    ld (hl), SHAPE_CHAR_SNAKE_RIGHT        ; draw inital snake
     dec hl
-    ld (hl), SHAPE_CHAR_SNAKE        ; draw inital snake
+    ld (hl), SHAPE_CHAR_SNAKE_RIGHT        ; draw inital snake
 
     ; default two more food so is always 4 on screen at any one time
     call setRandomFood
@@ -256,6 +286,12 @@ skipCheckKeyDown
     ret
     jp drawBlock
 drawLeft   
+
+    ;; set the character to draw at this position
+    ld  a, SHAPE_CHAR_SNAKE_LEFT
+    ld (shapeSet),a
+    
+
     ld a, SNAKE_MOVEMENT_LEFT
     ld (movedFlag), a      
     ld a, (snakeCoordsCol)    
@@ -269,6 +305,11 @@ drawLeft
     jp drawBlock
     
 drawRight
+
+    ;; set the character to draw at this position
+    ld  a, SHAPE_CHAR_SNAKE_RIGHT
+    ld (shapeSet),a
+    
     ld a, SNAKE_MOVEMENT_RIGHT
     ld (movedFlag), a    
     ld a, (snakeCoordsCol)  
@@ -282,6 +323,11 @@ drawRight
     jp drawBlock  
     
 drawUp
+
+    ;; set the character to draw at this position
+    ld  a, SHAPE_CHAR_SNAKE_UP
+    ld (shapeSet),a
+    
     ld a, SNAKE_MOVEMENT_UP
     ld (movedFlag), a
     ld a, (snakeCoordsRow)    
@@ -295,6 +341,9 @@ drawUp
     ld (absoluteScreenMemoryPosition), hl    
     jp drawBlock
 drawDown
+    ;; set the character to draw at this position
+    ld  a, SHAPE_CHAR_SNAKE_DOWN
+    ld (shapeSet),a
     ld a, SNAKE_MOVEMENT_DOWN
     ld (movedFlag), a 
     ld a, (snakeCoordsRow)
@@ -314,25 +363,18 @@ drawBlock
     ld a, (movedFlag)
     cp 0
     jp z, noCheck
-    
+      
+    ld a, (shapeSet)    
+    ld b, a
     ld hl, (absoluteScreenMemoryPosition)
-   
-    xor a           ; zero a and clear flags
-    ld a, (hl)                 
-    sub SHAPE_CHAR_SNAKE    
-    jp z, gameOver
+    ld a, (hl)        
+    sub b   
+    jp z, gameOver    
     xor a           ; zero a and clear flags
     ld a, (hl)    
     sub SHAPE_CHAR_WALL
     jp z, gameOver
-
-; to enable "halt" for debug uncomment next 4 rows
-;    di              ; disable interrupts
-;    LD A,0          ; disable NMI for DEBUG only
-;    OUT ($FD),A     ; disable NMI for DEBUG only
-;here__    
-;    jp here__
-    
+   
     xor a           ; zero a and clear flags
     ld a, (hl)
     sub SHAPE_CHAR_FOOD
@@ -425,7 +467,7 @@ newcorrdForLeft
     add hl, de    
     ld a, (hl)
     inc hl  ; to push coord on one
-    ld (hl), a      ; make new coord smae as previous
+    ld (hl), a      ; make new coord same as previous
 
     ld a, (snakeTailIndex)        
     ld b, a     ; for some reason get a MS byte not used unless you go via a ??      
@@ -440,6 +482,15 @@ newcorrdForLeft
     inc a           ; going left new coord is current tail plus one
     inc hl          ; to push coord on one
     ld (hl), a      ; make new coord smae as previous    
+    
+    ld a, (snakeTailIndex)        
+    ld b, a     ; for some reason get a MS byte not used unless you go via a ??      
+    ld hl, snakeCharsToPrint
+    ld d, 0
+    ld e, b
+    add hl, de        
+    ld a,  SHAPE_CHAR_SNAKE_LEFT
+    ld (hl), a      
     jp afterCoordAdd
 
 newcorrdForRight
@@ -466,6 +517,16 @@ newcorrdForRight
     dec a           ; going right new coord is current tail minus one
     inc hl          ; to push coord on one
     ld (hl), a      ; make new coord smae as previous    
+
+    ld a, (snakeTailIndex)        
+    ld b, a     ; for some reason get a MS byte not used unless you go via a ??      
+    ld hl, snakeCharsToPrint
+    ld d, 0
+    ld e, b
+    add hl, de        
+    ld a,  SHAPE_CHAR_SNAKE_RIGHT
+    ld (hl), a      
+    
     jp afterCoordAdd
 
 newcorrdForUp ; if moving up new tail is same col, last tail row+1
@@ -492,6 +553,15 @@ newcorrdForUp ; if moving up new tail is same col, last tail row+1
     inc a           ; going up new row coord is current tail plus one
     inc hl          ; to push coord on one
     ld (hl), a      ; make new coord smae as previous    
+
+    ld a, (snakeTailIndex)        
+    ld b, a     ; for some reason get a MS byte not used unless you go via a ??      
+    ld hl, snakeCharsToPrint
+    ld d, 0
+    ld e, b
+    add hl, de        
+    ld a,  SHAPE_CHAR_SNAKE_UP
+    ld (hl), a          
     jp afterCoordAdd
 
 newcorrdForDown    ; if moving down new tail is same col, last tail row-1
@@ -517,9 +587,19 @@ newcorrdForDown    ; if moving down new tail is same col, last tail row-1
     ld (hl), a      ; make new coord smae as previous    
 
     dec a           ; going down new row coord is current tail minus one
-    inc hl          ; to push coord on one
+    inc hl          ; to push coord on one    
     ld (hl), a      ; make new coord smae as previous    
-
+    
+    ld a, (snakeTailIndex)        
+    ld b, a     ; for some reason get a MS byte not used unless you go via a ??      
+    ld hl, snakeCharsToPrint
+    ld d, 0
+    ld e, b
+    add hl, de        
+    ld a,  SHAPE_CHAR_SNAKE_DOWN
+    ld (hl), a          
+    
+    
 afterCoordAdd    
     ld a, (snakeTailIndex)
     inc a
@@ -572,12 +652,15 @@ NOwipeLastTailPreviousPos
     push hl  ; push hl to get into bc via the pop, why is ld bc, hl not an instruction? who am I to question :)
     pop bc
     call PRINTAT		; ROM routine to set current cursor position, from row b and column e  
+    
+    
+    ;;;;; DRAW THE NEW HEAD OF THE SNAKE
     ld a, (shapeSet)
     call PRINT 
   
-    ld hl, $4fff
+    ;ld hl, $4fff
     ;ld hl, $ffff
-    ;ld hl, (waitSpeed)
+    ld hl, (waitSpeed)
     ;ld hl, $0fff
     push hl
     pop bc
@@ -669,9 +752,9 @@ drawLineZeroAndLast         ; draw the boarder at top and bottom
     ld de, 31
     ld hl, Display+1
 drawColZero      
-    ld (hl), 189          
+    ld (hl), SHAPE_CHAR_WALL          
     add hl, de  
-    ld (hl), 189    
+    ld (hl), SHAPE_CHAR_WALL    
     inc hl    
     inc hl
     djnz drawColZero
@@ -854,7 +937,7 @@ game_over_txt
 scoreText    
     DEFB	_S,_C,_O,_R,_E,__,__,$ff 
 shapeSet
-    DEFB SHAPE_CHAR_SNAKE
+    DEFB SHAPE_CHAR_SNAKE_RIGHT
 shapeOnFlag
     DEFB 0
 movedFlag
@@ -909,7 +992,14 @@ snakeCoordsRow
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
-
+snakeCharsToPrint
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
+    
 title_screen_txt
 	DEFB	_Z,_X,_8,_1,__,_S,_N,_A,_K,_E,$ff
 keys_screen_txt_1

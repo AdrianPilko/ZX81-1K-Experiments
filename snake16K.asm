@@ -6,12 +6,9 @@
 ; KNOWN BUGS
 ;       1) sometimes the snake body drops down by one as its moving left or right mid way along
 ;          this can cause an unexpected game over if it hits itself or the edge of play area
-;          other times this leaves a black sqaure in that place and game carries on (snake molting?)
-;          Found that in latest version this always happens 20characters from the left on top row
-;          even if no food collected??! If moving down over that column (same line as the vertical wall)
-;          then the bug causes the snake head to jump over itself then immediately crash into itself
-;          UPDATE: have narrowed the bug to certain row col postitions, in particular col 15, row 6 (indexed from 0)
-;                      WHAT COULD POSSIBLY BE SPECIAL ABOUT THAT LOCATION (6 * 33) + 15 = 213) ???????
+;          other times this leaves a black sqaure in that place and game carries on (snake sheding it's skin? ;-/
+;          If moving down over that location  then the bug causes the snake head to jump over itself 
+;          then immediately crash into itself.
 ;       2) when the snake gets longer than about 70 (unsure exact number) after game over the
 ;          title screen is corrupted and then pressing s to start causes screen corruption
 ;          and the game never starts - must be a memory overrite somewhere :-///
@@ -46,16 +43,21 @@
 #define KEYBOARD_READ_PORT $FE 
 
 ;#define SHAPE_CHAR_SNAKE   151        ; black square
+
 ;#define SHAPE_CHAR_SNAKE_UP   3        
 ;#define SHAPE_CHAR_SNAKE_DOWN   131    
 ;#define SHAPE_CHAR_SNAKE_LEFT   5      
 ;##define SHAPE_CHAR_SNAKE_RIGHT   133   
 
 
-#define SHAPE_CHAR_SNAKE_UP   156
-#define SHAPE_CHAR_SNAKE_DOWN   157    
-#define SHAPE_CHAR_SNAKE_LEFT   158      
-#define SHAPE_CHAR_SNAKE_RIGHT   159   
+;#define SHAPE_CHAR_SNAKE_UP   156
+;#define SHAPE_CHAR_SNAKE_DOWN   157    
+;#define SHAPE_CHAR_SNAKE_LEFT   158      
+;#define SHAPE_CHAR_SNAKE_RIGHT   159   
+#define SHAPE_CHAR_SNAKE_UP   151
+#define SHAPE_CHAR_SNAKE_DOWN   151    
+#define SHAPE_CHAR_SNAKE_LEFT   151      
+#define SHAPE_CHAR_SNAKE_RIGHT   151   
 
 #define SHAPE_CHAR_FOOD 136
 #define SHAPE_CHAR_WALL 189
@@ -145,7 +147,7 @@ initVariables
     call printNumber    
     
     
-    ld a, 3 
+    ld a, 3
     ld (snakeTailIndex), a    
     ld (foodCount), a
     daa
@@ -160,8 +162,8 @@ initVariables
     ld (snakeCoordsRow+1), a    
     ld (snakeCoordsRow+2), a    
     ld (snakeCoordsRow+3), a    
-    ld (snakeCoordsRow+4), a    
-    ld (snakeCoordsRow+5), a 
+    ;ld (snakeCoordsRow+4), a    
+   ; ld (snakeCoordsRow+5), a 
     
     ld a, 15			  
     ld (snakeCoordsCol), a
@@ -171,10 +173,10 @@ initVariables
     ld (snakeCoordsCol+2), a
     dec a
     ld (snakeCoordsCol+3), a
-    dec a
-    ld (snakeCoordsCol+4), a
-    dec a
-    ld (snakeCoordsCol+5), a
+    ;dec a
+    ;ld (snakeCoordsCol+4), a
+    ;dec a
+   ; ld (snakeCoordsCol+5), a
     
     ; default movement is right
     ld a, SNAKE_MOVEMENT_RIGHT
@@ -188,7 +190,7 @@ initVariables
     ld a,SHAPE_CHAR_SNAKE_RIGHT
     ld (snakeCharsToPrint), a
     ld (snakeCharsToPrint+1), a
-    ld (snakeCharsToPrint+2), a
+    ld (snakeCharsToPrint+2), a    
     xor a
     ld (snakeCharsToPrint+3), a
     ld (snakeCharsToPrint+4), a

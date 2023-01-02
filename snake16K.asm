@@ -69,6 +69,8 @@
 
 #define SNAKE_MAX_LENGTH 190
 
+VSYNCLOOP     .equ      7
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp intro_title		; main entry poitn to the code ships the memory definitions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -78,6 +80,7 @@ introWaitLoop_1
 	dec bc
 	ld a,b
 	or c
+
 	jr nz, introWaitLoop_1
 	jp read_start_key
 	
@@ -151,7 +154,7 @@ initVariables
     ld (snakeTailIndex), a    
     ld (foodCount), a
     daa
-    ld (snakeLength), a
+    ;;ld (snakeLength), a
     
     ld hl, $04ff
     ld (waitSpeed), hl
@@ -220,13 +223,19 @@ initVariables
     
 main
 
+	ld b,VSYNCLOOP
+waitForTVSync	
+	call vsync
+	djnz waitForTVSync
+
+
     ld bc, 20
     ; copy snake length
     ld a, (snakeTailIndex)
-    daa         ; make it into a binary coded decimal "human" readible number
-    ld (snakeLength), a
-    ld de, snakeLength ; print the length of the snake (mainly for debug)
-	call printNumber    
+    ;;daa         ; make it into a binary coded decimal "human" readible number
+   ;; ld (snakeLength), a
+   ;; ld de, snakeLength ; print the length of the snake (mainly for debug)
+	;;call printNumber    
 
     ; read the keyboard input and adust the offset     
     
@@ -430,6 +439,8 @@ skipAddHund
     ld bc, 10
     ld de, score_mem_hund
     call printNumber    
+    
+    ;;call debugPrintRegisters
     
     ; we got the food, so increase length of the snake...    
     ; ...but we also need to set the new coordinates for the tail based on the direction
@@ -639,8 +650,12 @@ noErrorRow
 noErrorCol    
     push hl  ; push hl to get into bc via the pop, why is ld bc, hl not an instruction? who am I to question :)
     pop bc
-       
-    call PRINTAT		; ROM routine to set current cursor position, from row b and column e  
+    
+    push bc
+    push af  
+    call PRINTAT		; ROM routine to set current cursor position, from row b and column e     
+    pop af
+    pop bc
     
     ld a, SHAPE_CHAR_NO_PRINT
     call PRINT     
@@ -653,7 +668,14 @@ NOwipeLastTailPreviousPos
     
     push hl  ; push hl to get into bc via the pop, why is ld bc, hl not an instruction? who am I to question :)
     pop bc
-    call PRINTAT		; ROM routine to set current cursor position, from row b and column e  
+
+
+    push bc
+    push af  
+    call PRINTAT		; ROM routine to set current cursor position, from row b and column e     
+    pop af
+    pop bc
+
     
     
     ;;;;; DRAW THE NEW HEAD OF THE SNAKE
@@ -662,16 +684,16 @@ NOwipeLastTailPreviousPos
   
     ;ld hl, $4fff
     ;ld hl, $ffff
-    ld hl, (waitSpeed)
-    ;ld hl, $0fff
-    push hl
-    pop bc
+;;    ld hl, (waitSpeed)
+    ;;ld hl, $ffff
+;;    push hl
+;;    pop bc
   
-waitloop
-    dec bc
-    ld a,b
-    or c
-    jr nz, waitloop    
+;;waitloop
+  ;;  dec bc
+;;    ld a,b
+    ;;or c
+    ;;jr nz, waitloop    
     jp main
   
 gameOver
@@ -687,7 +709,8 @@ gameOver
     ld hl, $ffff
     push hl
     pop bc
-  
+        
+    
 waitloop_endGame
     dec bc
     ld a,b
@@ -909,7 +932,15 @@ tryAnotherRRow                          ; generate random number to index shape 
     
     push hl  ; push hl to get into bc via the pop, why is ld bc, hl not an instruction? who am I to question :)
     pop bc
-    call PRINTAT		; ROM routine to set current cursor position, from row b and column e  
+
+    push bc
+    push af  
+    call PRINTAT		; ROM routine to set current cursor position, from row b and column e     
+    pop af
+    pop bc
+
+
+
     ld a, SHAPE_CHAR_FOOD
     call PRINT 
     
@@ -930,6 +961,92 @@ pauseWaitLoop       ; needs a wait otherwise the key press is still down reads t
     jr goIntoPause
 returnFromPause    
     jp afterPause
+
+;check if TV synchro (FRAMES) happend
+vsync	
+	ld a,(FRAMES)
+	ld c,a
+sync
+	ld a,(FRAMES)
+	cp c
+	jr z,sync
+	ret
+
+
+debugPrintRegisters
+    ; take copy of all the registers
+    push hl
+    push de
+    push af    
+    push bc
+    
+    ; position the cursor
+    ;set b to row, c to first col, which is the last row
+    ld b, 21
+    ld c, 0    
+    call PRINTAT
+    pop bc
+    pop af
+    pop de
+    pop hl    
+    
+    push hl
+    push de
+    push af    
+    push bc
+    
+    ld a, a
+    call hprint    
+    ld a, 14
+    call PRINT  
+
+    ld a, h
+    call hprint    
+    ld a, l    
+    call hprint
+    ld a, 14
+    call PRINT
+       
+    ld a, d
+    call hprint
+    ld a, e
+    call hprint
+    ld a, 14
+    call PRINT
+
+    ld a, b
+    call hprint
+    ld a, c
+    call hprint    
+   
+   
+    ;restore registers (in correct reverse order!)        
+    pop bc
+    pop af
+    pop de
+    pop hl
+    
+    ret
+    
+hprint 		;;http://swensont.epizy.com/ZX81Assembly.pdf?i=1
+	push af ;store the original value of a for later
+	and $f0 ; isolate the first digit
+	rra
+	rra
+	rra
+	rra
+	add a,$1c ; add 28 to the character code
+	call PRINT ;
+	pop af ; retrieve original value of a
+	and $0f ; isolate the second digit
+	add a,$1c ; add 28 to the character code
+	call PRINT
+	ret
+
+
+
+
+
     
    
 #include "line2.asm"
@@ -1027,7 +1144,7 @@ snakeCoordsRowTemp
     DEFB 0
 foodCount
     DEFB 0
-snakeLength
-    DEFB 0
+;;snakeLength
+;;    DEFB 0
    
 #include "endbasic.asm"

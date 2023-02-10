@@ -1,7 +1,5 @@
-# ZX81- assemble code
+# ZX81- assembly code
 This repo started out as 1k compatible programs but now only a few are, some need 16k
-
-Various 1K ZX81 compatible assembly programs. 
 
 Currently these program files, most are 16k not 1k
 

@@ -293,8 +293,7 @@ skipCheckKeyDown
     jp z, drawUp
     cp SNAKE_MOVEMENT_DOWN
     jp z, drawDown
- 
-    ret
+     
     jp drawBlock
 drawLeft   
 
@@ -363,8 +362,8 @@ drawDown
     jp z, drawBlock    
     call shuffleSnakeInRow
     ld hl, (absoluteScreenMemoryPosition)
-    ld bc, 33
-    add hl, bc
+    ld de, 33
+    add hl, de
     ld (absoluteScreenMemoryPosition), hl    
     jp drawBlock
        

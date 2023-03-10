@@ -3,17 +3,13 @@
 ;;; It's a clone of snake (in case that wasn't clear from filename;)
 ;;;;;;;;;;;;;;;;;;;;;
 
-; KNOWN BUGS
-;       1) sometimes the snake body drops down by one as its moving left or right mid way along
-;          this can cause an unexpected game over if it hits itself or the edge of play area
-;          other times this leaves a black sqaure in that place and game carries on (snake sheding it's skin? ;-/
-;          If moving down over that location  then the bug causes the snake head to jump over itself 
-;          then immediately crash into itself.
-;       2) when the snake gets longer than about 70 (unsure exact number) after game over the
+; KNOWN BUGS /  FEATURES;       
+;       1) when the snake gets longer than about 70 (unsure exact number) after game over the
 ;          title screen is corrupted and then pressing s to start causes screen corruption
 ;          and the game never starts - must be a memory overrite somewhere :-///
-;       3) no check of the new food appearing in any of the snake body coordinates
+;       2) no check of the new food appearing in any of the snake body coordinates
 ;          which is why have to add two new food each time
+;       3) no joystick support - would improve the game running on real ZX81, is ok in emulator
 
 
 ; to enable "halt" for debug uncomment next 4 rows
@@ -30,6 +26,8 @@
 #include "charcodes.asm"
 #include "zx81sys.asm"
 #include "line1.asm"
+
+;;; #define FULL_DEBUG  ;;; comment out if no debug then rebuild
 
 
 #define KEYBOARD_READ_PORT_P_TO_Y	$DF
@@ -49,15 +47,17 @@
 ;#define SHAPE_CHAR_SNAKE_LEFT   5      
 ;##define SHAPE_CHAR_SNAKE_RIGHT   133   
 
-
-;#define SHAPE_CHAR_SNAKE_UP   156
-;#define SHAPE_CHAR_SNAKE_DOWN   157    
-;#define SHAPE_CHAR_SNAKE_LEFT   158      
-;#define SHAPE_CHAR_SNAKE_RIGHT   159   
+#ifdef FULL_DEBUG
+#define SHAPE_CHAR_SNAKE_UP   156
+#define SHAPE_CHAR_SNAKE_DOWN   157    
+#define SHAPE_CHAR_SNAKE_LEFT   158      
+#define SHAPE_CHAR_SNAKE_RIGHT   159   
+#else
 #define SHAPE_CHAR_SNAKE_UP   151
 #define SHAPE_CHAR_SNAKE_DOWN   151    
 #define SHAPE_CHAR_SNAKE_LEFT   151      
 #define SHAPE_CHAR_SNAKE_RIGHT   151   
+#endif
 
 #define SHAPE_CHAR_FOOD 136
 #define SHAPE_CHAR_WALL 189
@@ -150,7 +150,7 @@ initVariables
     call printNumber    
     
     
-    ld a, 3
+    ld a, 1
     ld (snakeTailIndex), a    
     ld (foodCount), a
     daa
@@ -161,43 +161,52 @@ initVariables
     
 
     ld a, 10                    ; bit wasteful of memory, should put in loop?!
-    ld (snakeCoordsRow), a       
-    ld (snakeCoordsRow+1), a    
+    ld (snakeCoordsRow), a      
+    xor a    
+    ld (snakeCoordsRow+1), a        
     ld (snakeCoordsRow+2), a    
     ld (snakeCoordsRow+3), a    
-    ;ld (snakeCoordsRow+4), a    
-   ; ld (snakeCoordsRow+5), a 
+    ld (snakeCoordsRow+4), a    
+    ld (snakeCoordsRow+5), a 
+    ld (snakeCoordsRow+6), a 
+    ld (snakeCoordsRow+7), a 
+    ld (snakeCoordsRow+8), a 
     
     ld a, 15			  
     ld (snakeCoordsCol), a
-    dec a
-    ld (snakeCoordsCol+1), a
-    dec a
+    xor a    
+    ld (snakeCoordsCol+1), a    
     ld (snakeCoordsCol+2), a
-    dec a
     ld (snakeCoordsCol+3), a
-    ;dec a
-    ;ld (snakeCoordsCol+4), a
-    ;dec a
-   ; ld (snakeCoordsCol+5), a
+    ld (snakeCoordsCol+4), a    
+    ld (snakeCoordsCol+5), a
+    ld (snakeCoordsCol+6), a
+    ld (snakeCoordsCol+7), a
+    ld (snakeCoordsCol+8), a
     
     ; default movement is right
     ld a, SNAKE_MOVEMENT_RIGHT
     ld (snakeMovementFlags), a
+    xor a
     ld (snakeMovementFlags+1), a
     ld (snakeMovementFlags+2), a
     ld (snakeMovementFlags+3), a
-    ld (snakeMovementFlags+4), a
+    ld (snakeMovementFlags+4), a    
     ld (snakeMovementFlags+5), a
+    ld (snakeMovementFlags+6), a
+    ld (snakeMovementFlags+7), a
+    ld (snakeMovementFlags+8), a
     
     ld a,SHAPE_CHAR_SNAKE_RIGHT
     ld (snakeCharsToPrint), a
-    ld (snakeCharsToPrint+1), a
-    ld (snakeCharsToPrint+2), a    
     xor a
+    ld (snakeCharsToPrint+1), a    
+    ld (snakeCharsToPrint+2), a    
     ld (snakeCharsToPrint+3), a
-    ld (snakeCharsToPrint+4), a
+    ld (snakeCharsToPrint+4), a    
     ld (snakeCharsToPrint+5), a
+    ld (snakeCharsToPrint+6), a
+    ld (snakeCharsToPrint+7), a
   
     
     ld a, SNAKE_MOVEMENT_RIGHT
@@ -209,10 +218,10 @@ initVariables
     ld (absoluteScreenMemoryPosition), hl    
     ld hl, (absoluteScreenMemoryPosition)
     ld (hl), SHAPE_CHAR_SNAKE_RIGHT        ; draw inital snake
-    dec hl    
-    ld (hl), SHAPE_CHAR_SNAKE_RIGHT        ; draw inital snake
-    dec hl
-    ld (hl), SHAPE_CHAR_SNAKE_RIGHT        ; draw inital snake
+    ;dec hl    
+    ;ld (hl), SHAPE_CHAR_SNAKE_RIGHT        ; draw inital snake
+    ;dec hl
+    ;ld (hl), SHAPE_CHAR_SNAKE_RIGHT        ; draw inital snake
 
     ; default two more food so is always 4 on screen at any one time
     call setRandomFood
@@ -379,11 +388,17 @@ drawBlock
     ld hl, (absoluteScreenMemoryPosition)
     ld a, (hl)        
     sub b   
+    
+#ifndef FULL_DEBUG    
+    ; while debugging disable collision with snake and walls
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     jp z, gameOver    
+   
     xor a           ; zero a and clear flags
     ld a, (hl)    
     sub SHAPE_CHAR_WALL
     jp z, gameOver
+#endif 
    
     xor a           ; zero a and clear flags
     ld a, (hl)
@@ -626,7 +641,8 @@ noCheck
     ld b, 0
     ld a, (snakeTailIndex) 
     ld c, a
-    add hl, bc
+    add hl, bc    
+    
     ld a, (hl)
     ld h, a				    ; row set for PRINTAT
     cp 0
@@ -650,11 +666,17 @@ noErrorCol
     push hl  ; push hl to get into bc via the pop, why is ld bc, hl not an instruction? who am I to question :)
     pop bc
     
-    push bc
-    push af  
-    call PRINTAT		; ROM routine to set current cursor position, from row b and column e     
-    pop af
+    ;call debugPrintRegisters
+    
+    push hl   ; save registers thinking is it's the bug that drops print at down one
+    push de
+    push af    
+    push bc   
+    call PRINTAT		; ROM routine to set current cursor position, from row b and column c    
     pop bc
+    pop af
+    pop de
+    pop hl        
     
     ld a, SHAPE_CHAR_NO_PRINT
     call PRINT     
@@ -669,11 +691,15 @@ NOwipeLastTailPreviousPos
     pop bc
 
 
-    push bc
-    push af  
-    call PRINTAT		; ROM routine to set current cursor position, from row b and column e     
-    pop af
+    push hl   ; save registers thinking is it's the bug that drops print at down one
+    push de
+    push af    
+    push bc   
+    call PRINTAT		; ROM routine to set current cursor position, from row b and column c     
     pop bc
+    pop af
+    pop de
+    pop hl  
 
     
     
@@ -809,7 +835,9 @@ shuffleSnakeInCol
     inc a
     ld b, a 
     ;; loop for b
-CdrawLeftSnakeShuffleLoopCol    
+CdrawLeftSnakeShuffleLoopCol   
+;;;;; chances are the bug where extra shake bits drop one line and off the tail is here!!! 
+;;;;; chances are the bug where extra shake bits drop one line and off the tail is here!!! 
     ld hl, snakeCoordsCol                        
     ld d, 0
     ld e, b    
@@ -817,9 +845,19 @@ CdrawLeftSnakeShuffleLoopCol
     add hl, de
     ld a, (hl)
     inc hl    
-    ld (hl), a                
+    ld (hl), a                    
+    ld hl, snakeMovementFlags
 
-    ld hl, snakeMovementFlags                   
+#ifdef FULL_DEBUG    
+    push bc
+    push hl
+    push af    
+    call debugPrintRegisters
+    pop af    
+    pop hl    
+    pop bc    
+#endif 
+
     ld d, 0
     ld e, b    
     dec e       ; we want e to be one less than the loop counter
@@ -872,6 +910,19 @@ RdrawLeftSnakeShuffleLoopRow
     ld (hl), a                
 
     ld hl, snakeMovementFlags                      
+
+#ifdef FULL_DEBUG    
+    push bc
+    push hl
+    push af    
+    call debugPrintRegisters   
+    pop af    
+    pop hl    
+    pop bc    
+#endif    
+
+
+    
     ld d, 0
     ld e, b    
     dec e       ; we want e to be one less than the loop counter
@@ -932,12 +983,15 @@ tryAnotherRRow                          ; generate random number to index shape 
     push hl  ; push hl to get into bc via the pop, why is ld bc, hl not an instruction? who am I to question :)
     pop bc
 
-    push bc
-    push af  
+    push hl   ; save registers thinking is it's the bug that drops print at down one
+    push de
+    push af    
+    push bc   
     call PRINTAT		; ROM routine to set current cursor position, from row b and column e     
-    pop af
     pop bc
-
+    pop af
+    pop de
+    pop hl  
 
 
     ld a, SHAPE_CHAR_FOOD
@@ -980,9 +1034,10 @@ debugPrintRegisters
     push bc
     
     ; position the cursor
-    ;set b to row, c to first col, which is the last row
-    ld b, 21
-    ld c, 0    
+    ;set b to row, c to first col, which is the last row    
+    ld b, 0     ; have seen strange thing when debug comes out and bug happens it drops one line
+    ld c, 1
+    ld b, 21        
     call PRINTAT
     pop bc
     pop af
@@ -1017,8 +1072,29 @@ debugPrintRegisters
     call hprint
     ld a, c
     call hprint    
-   
-   
+    ld a, 14
+    call PRINT      
+  
+    ;;print a couple of memory locations
+    ld a, (snakeCoordsRow)
+    call hprint    
+    ld a, 14
+    call PRINT      
+    ld a, (snakeCoordsCol)
+    call hprint    
+    ld a, 14
+    call PRINT          
+    ld a, (snakeTailIndex)   
+    call hprint    
+    ld a, 14
+    call PRINT      
+
+    ld hl, (absoluteScreenMemoryPosition) 
+    ld a, h
+    call hprint    
+    ld a, l
+    call hprint    
+
     ;restore registers (in correct reverse order!)        
     pop bc
     pop af
@@ -1045,11 +1121,8 @@ hprint 		;;http://swensont.epizy.com/ZX81Assembly.pdf?i=1
 
 
 
-
-    
-   
-#include "line2.asm"
-#include "screenFull.asm"      			; definition of the screen memory, in colapsed version for 1K        
+;include our variables
+;#include "vars.asm"
 game_over_txt
 	DEFB	_G,_A,_M,_E,__,_O,_V,_E,_R,$ff 
 scoreText    
@@ -1142,8 +1215,8 @@ snakeCoordsColTemp
 snakeCoordsRowTemp
     DEFB 0
 foodCount
-    DEFB 0
-;;snakeLength
-;;    DEFB 0
+    DEFB 0    
    
+#include "line2.asm"
+#include "screenFull.asm"      			; definition of the screen memory, in colapsed version for 1K         
 #include "endbasic.asm"

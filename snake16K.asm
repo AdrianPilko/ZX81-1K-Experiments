@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;
-;;; zx81 16K code 
+;;; zx81 16K code by Adrian Pilkington (orginally 2022) updated later as well!
 ;;; It's a clone of snake (in case that wasn't clear from filename;)
 ;;;;;;;;;;;;;;;;;;;;;
 
@@ -122,6 +122,16 @@ intro_title
 	ld bc,569	
 	ld de,credits_and_version_2
 	call printstring	
+    
+    ld bc,632
+	ld de,TextForGameJam1
+    call printstring	
+    ld bc,665
+	ld de,TextForGameJam2
+    call printstring	
+    ld bc,698
+	ld de,TextForGameJam3
+    call printstring	
 	
 read_start_key
 	ld a, KEYBOARD_READ_PORT_A_TO_G	
@@ -1209,7 +1219,13 @@ high_Score_txt
 credits_and_version_1
 	DEFB _B,_Y,__,_A,__,_P,_I,_L,_K,_I,_N,_G,_T,_O,_N,$ff
 credits_and_version_2
-	DEFB __,__,__,__,__,__,_2,_0,_2,_2,__,__,__,__,__,$ff    
+	DEFB __,__,__,__,__,__,_2,_0,_2,_2,24,_3,__,__,__,$ff    
+TextForGameJam1    
+    DEFB _P,_A,_R,_T,_I,_C,_I,_P,_A,_T,_E,_D,0,_I,_N,0,_T,_H,_E,0,_R,_E,_T,_R,_O,$ff
+TextForGameJam2    
+    DEFB _P,_R,_O,_G,_R,_A,_M,_M,_E,_R,_S,0,_I,_N,_S,_I,_D,_E,16,_R,_P,_I,17,$ff
+TextForGameJam3    
+    DEFB _A,_N,_D,0, _P,_H,_A,_Z,_E,_1,_0,_1,0,_G,_A,_M,_E,0,_J,_A,_M,$ff
 snakeCoordsColTemp
     DEFB 0
 snakeCoordsRowTemp

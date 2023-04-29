@@ -8,8 +8,10 @@
 ;          title screen is corrupted and then pressing s to start causes screen corruption
 ;          and the game never starts - must be a memory overrite somewhere :-///
 ;       2) no check of the new food appearing in any of the snake body coordinates
-;          which is why have to add two new food each time
+;          which is why have to add two new food each time. To correct this would have to check
+;          entire length of snake for conflicts, is doable but would slow code down for long snakes
 ;       3) no joystick support - would improve the game running on real ZX81, is ok in emulator
+;       4) no key redefine
 
 
 ; to enable "halt" for debug uncomment next 4 rows
@@ -37,7 +39,9 @@
 #define KEYBOARD_READ_PORT_SHIFT_TO_V $FE
 ; keyboard space to b
 #define KEYBOARD_READ_PORT_SPACE_TO_B $7F 
-; starting port numbner for keyboard, is same as first port for shift to v
+; keyboard q to t
+#define KEYBOARD_READ_PORT_Q_TO_T $FB
+; keyboard read port 
 #define KEYBOARD_READ_PORT $FE 
 
 ;#define SHAPE_CHAR_SNAKE   151        ; black square
@@ -251,51 +255,64 @@ waitForTVSync
     ld bc, 20
     ; copy snake length
     ld a, (snakeTailIndex)
-    ;;daa         ; make it into a binary coded decimal "human" readible number
-   ;; ld (snakeLength), a
-   ;; ld de, snakeLength ; print the length of the snake (mainly for debug)
-	;;call printNumber    
+
+; keyboard layout for reading keys on ZX81
+; BIT   left block      right block  BIT
+; off                                off in <port>, when ld a, <port>
+;       0  1 2 3 4     4 3 2 1 0                 <<< bit to check for each column after in a, $fe 
+; 3   ( 1  2 3 4 5 ) ( 6 7 8 9 0 )     4
+; 2   ( Q  W E R T ) ( Y U I O P )     5
+; 1   ( A  S D F G ) ( H I K L n/l)    6
+; 0   (sft Z X C V ) ( B N M . spc)    7
+;
+; to read keys 1 2 3 4 5
+; set all bits except bit 3 of register A = 1 1 1 1 0 1 1 1= f7, then execute in a, $fe  (fe is the "keyboard read port")
+; now register a will contain a bit pattern to check for which key in that block was set, eg Key "1" = bit 0 of a
+; ld a, $f7    
+; in a, $fe    
+; similarly for the rest, to read from block A S D F G, set a to 1 1 1 1 1 1 1 0 1 = $fd
+
 
     ; read the keyboard input and adust the offset     
     
-    ; check for pause key pressed "P"    
+    ; check for pause key pressed "space"    
     ld a, KEYBOARD_READ_PORT_P_TO_Y
     in a, (KEYBOARD_READ_PORT)					; read from io port	
-    bit 0, a                            ; "P"
+    bit 4, a                            ; "SPACE"
     jp z, goIntoPause           ; only returns from pause when p is pressed again
 afterPause    
     
     ld a, (movedFlag)   ;  check that we don't double back on ourselves!
     cp SNAKE_MOVEMENT_RIGHT
     jp z, skipCheckKeyLeft
-    ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			
+    ld a, KEYBOARD_READ_PORT_P_TO_Y			
     in a, (KEYBOARD_READ_PORT)					; read from io port	
-    bit 1, a                            ; Z
+    bit 1, a                            ; O
     jp z, drawLeft								
 skipCheckKeyLeft  
     ld a, (movedFlag)   ;  check that we don't double back on ourselves!
     cp SNAKE_MOVEMENT_LEFT
     jp z, skipCheckKeyRight
-    ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
+    ld a, KEYBOARD_READ_PORT_P_TO_Y			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
-    bit 2, a						    ; M
+    bit 0, a						    ; P
     jp z, drawRight							    ; jump to move shape right	    
 
 skipCheckKeyRight    
     ld a, (movedFlag)   ;  check that we don't double back on ourselves!
     cp SNAKE_MOVEMENT_DOWN
     jp z, skipCheckKeyUp    
-    ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			
+    ld a, KEYBOARD_READ_PORT_Q_TO_T			
     in a, (KEYBOARD_READ_PORT)					; read from io port		
-    bit 2, a					        ; X
+    bit 0, a					        ; Q
     jp z, drawUp    
 skipCheckKeyUp  
     ld a, (movedFlag)   ;  check that we don't double back on ourselves!
     cp SNAKE_MOVEMENT_UP
     jp z, skipCheckKeyDown  
-    ld a, KEYBOARD_READ_PORT_SPACE_TO_B			
+    ld a, KEYBOARD_READ_PORT_A_TO_G   ; $fd
     in a, (KEYBOARD_READ_PORT)					; read from io port		
-    bit 3, a					        ; N
+    bit 0, a					        ; A
     jp z, drawDown
 skipCheckKeyDown
 
@@ -1204,11 +1221,11 @@ snakeCharsToPrint
 title_screen_txt
 	DEFB	_Z,_X,_8,_1,__,_S,_N,_A,_K,_E,$ff
 keys_screen_txt_1
-	DEFB	_S,__,_T,_O,__,_S,_T,_A,_R,_T,26,__,_Z,__,_L,_E,_F,_T,26,__,_M,__,_R,_I,_G,_H,_T,$ff
+	DEFB	_S,__,_T,_O,__,_S,_T,_A,_R,_T,26,__,_O,__,_L,_E,_F,_T,26,__,_P,__,_R,_I,_G,_H,_T,$ff
 keys_screen_txt_2
-	DEFB	__,_X,__,_U,_P,26,__,__,__,_N,__,_D,_O,_W,_N,$ff    
+	DEFB	__,_Q,__,_U,_P,26,__,__,__,_A,__,_D,_O,_W,_N,$ff    
 keys_screen_txt_3
-	DEFB	_P,__,_P,_A,_U,_S,_E,$ff    
+	DEFB	_S,_P,_A,_C,_E,__,_P,_A,_U,_S,_E,$ff    
 game_objective_txt
 	DEFB	_G,_R,_O,_W,__,_S,_N,_A,_K,_E,__,_A,_N,_D,__,_A,_V,_O,_I,_D,$ff
 	

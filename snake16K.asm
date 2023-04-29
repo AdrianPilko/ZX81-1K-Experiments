@@ -71,9 +71,9 @@
 #define SNAKE_MOVEMENT_UP 3
 #define SNAKE_MOVEMENT_DOWN 4
 
-#define SNAKE_MAX_LENGTH 190
+#define SNAKE_MAX_LENGTH 250  
 
-VSYNCLOOP     .equ      7
+VSYNCLOOP     .equ      5
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp intro_title		; main entry poitn to the code ships the memory definitions
@@ -164,7 +164,7 @@ initVariables
     call printNumber    
     
     
-    ld a, 1
+    ld a, 2
     ld (snakeTailIndex), a    
     ld (foodCount), a
     daa
@@ -176,8 +176,9 @@ initVariables
 
     ld a, 10                    ; bit wasteful of memory, should put in loop?!
     ld (snakeCoordsRow), a      
-    xor a    
-    ld (snakeCoordsRow+1), a        
+    inc a
+    ld (snakeCoordsRow+1), a    
+    xor a        
     ld (snakeCoordsRow+2), a    
     ld (snakeCoordsRow+3), a    
     ld (snakeCoordsRow+4), a    
@@ -188,8 +189,8 @@ initVariables
     
     ld a, 15			  
     ld (snakeCoordsCol), a
-    xor a    
     ld (snakeCoordsCol+1), a    
+    xor a        
     ld (snakeCoordsCol+2), a
     ld (snakeCoordsCol+3), a
     ld (snakeCoordsCol+4), a    
@@ -201,8 +202,8 @@ initVariables
     ; default movement is right
     ld a, SNAKE_MOVEMENT_RIGHT
     ld (snakeMovementFlags), a
-    xor a
     ld (snakeMovementFlags+1), a
+    xor a    
     ld (snakeMovementFlags+2), a
     ld (snakeMovementFlags+3), a
     ld (snakeMovementFlags+4), a    
@@ -212,9 +213,9 @@ initVariables
     ld (snakeMovementFlags+8), a
     
     ld a,SHAPE_CHAR_SNAKE_RIGHT
-    ld (snakeCharsToPrint), a
-    xor a
+    ld (snakeCharsToPrint), a    
     ld (snakeCharsToPrint+1), a    
+    xor a    
     ld (snakeCharsToPrint+2), a    
     ld (snakeCharsToPrint+3), a
     ld (snakeCharsToPrint+4), a    
@@ -1164,9 +1165,9 @@ absoluteScreenMemoryPosition
     DEFB 0,0    
 firstTimeFlag
     DEFB 1   
-snakeTailIndex      ; this is the index of the last coordinate of the snake, 3 initially (meaning there are 4 snake blocks)
+snakeTailIndex      ; this is the index of the last coordinate of the snake, 
     DEFB 0
-snakeTailPlusOne      ; this is the index of the last coordinate of the snake, 3 initially (meaning there are 4 snake blocks)
+snakeTailPlusOne      ; this is the index of the last coordinate of the snake, 
     DEFB 0    
 setRandomFoodCOL
     DEFB 0
@@ -1186,7 +1187,7 @@ last_score_mem_tens
 	DEFB 0
 last_score_mem_hund
 	DEFB 0	
-; the snake can grow to a maximum length of 192 so store  192 row and column positions
+; the snake can grow to a maximum length of 255 so store  255 row and column positions
 ; and movement directions to enable it to be undrawn properly as it moves around.
 
 snakeMovementFlags       ; this keeps track of the direction in force at each snake body position
@@ -1196,6 +1197,8 @@ snakeMovementFlags       ; this keeps track of the direction in force at each sn
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0     
 snakeCoordsCol            
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
@@ -1203,11 +1206,15 @@ snakeCoordsCol
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   
 snakeCoordsRow    
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
 snakeCharsToPrint
@@ -1217,7 +1224,9 @@ snakeCharsToPrint
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0    
-    
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+
 title_screen_txt
 	DEFB	_Z,_X,_8,_1,__,_S,_N,_A,_K,_E,$ff
 keys_screen_txt_1

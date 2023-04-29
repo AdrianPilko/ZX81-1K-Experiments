@@ -277,9 +277,9 @@ waitForTVSync
     ; read the keyboard input and adust the offset     
     
     ; check for pause key pressed "space"    
-    ld a, KEYBOARD_READ_PORT_P_TO_Y
+    ld a, KEYBOARD_READ_PORT_SPACE_TO_B
     in a, (KEYBOARD_READ_PORT)					; read from io port	
-    bit 4, a                            ; "SPACE"
+    bit 0, a                            ; "SPACE"
     jp z, goIntoPause           ; only returns from pause when p is pressed again
 afterPause    
     
@@ -1035,7 +1035,7 @@ pauseWaitLoop       ; needs a wait otherwise the key press is still down reads t
 	or c
 	jr nz, pauseWaitLoop
 
-    ld a, KEYBOARD_READ_PORT_P_TO_Y
+    ld a, KEYBOARD_READ_PORT_SPACE_TO_B
     in a, (KEYBOARD_READ_PORT)					; read from io port	
     bit 0, a                            ; "P"
     jp z, returnFromPause           ; only returns from pause when p is pressed again

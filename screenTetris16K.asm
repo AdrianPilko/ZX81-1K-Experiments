@@ -1,7 +1,7 @@
 ;ZX81 screens
 ; Display file (ZX81 screen) - low res screen 
 Display        	; empty (collapsed) DFILE on zx81 1K consists of the 25 chr$118 (hex 118)
-	DEFB 118,7,  3,  3,  3,  3,  3,  3,  3,132  ; 0, 136 first chr$118 marks the start of DFILE     
+	DEFB 118,_S,_C,_O,_R,_E,  3,  3,  3,132  ; 0, 136 first chr$118 marks the start of DFILE     
 	DEFB 118,5,136,136,136,136,136,136,136,133  ; 1, play area offset from DF_CC 12 to 18 
 	DEFB 118,5,136,136,136,136,136,136,136,133  ; 2, "" 22 to 28  
 	DEFB 118,5,136,136,136,136,136,136,136,133  ; 3  "" 32 to 38

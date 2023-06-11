@@ -25,6 +25,7 @@
 #define SHAPE_CHAR_1 136        ; grey square
 #define BOTTOM 22
 
+VSYNCLOOP     EQU      5
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp intro_title		; main entry poitn to the code ships the memory definitions
@@ -327,34 +328,25 @@ addOneToHund
 skipAddHund	
 
 printScoreInGame
-    ld bc, 1
+    ld bc, 6
     ld de, score_mem_tens
     call printNumber    
+      
 
-    ld bc, 4            ; print the current difficulty level (lower number is harder)
-    ld de, speedUp    
-    call printNumber    
-
-        
-    ld bc, (speedUp) 
-    ld hl, $0fff
     ld a, (waitLoopDropFasterFlag)
     cp 0
     jp z,dropNormalSpeed
 
-    ld bc, $0000      ; set to zero no wait, drop fast 
-    ld hl, $0002
-    
+    ld b, 0      ; set to zero no wait, drop fast 
+       
 dropNormalSpeed     
-    adc hl, bc
-    push hl
-    pop bc
-  
-waitloop
-    dec bc
-    ld a,b
-    or c
-    jr nz, waitloop
+    ld b,VSYNCLOOP
+waitloop	
+waitForTVSync	
+	call vsync
+	djnz waitForTVSync
+    
+
     ld a,(flagForBottomHit)         ; on current shape draw we detected that if the shape dropped one
                                     ; more line it would hit the something
     cp 1                            ; if flagForBottomHit is set then this will set zero flag
@@ -517,6 +509,17 @@ printstring_loop
     jr printstring_loop
 printstring_end	
     ret  
+
+;check if TV synchro (FRAMES) happend
+vsync	
+	ld a,(FRAMES)
+	ld c,a
+sync
+	ld a,(FRAMES)
+	cp c
+	jr z,sync
+	ret
+
 
 printNumber
     ld hl,(DF_CC)

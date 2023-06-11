@@ -73,7 +73,7 @@
 
 #define SNAKE_MAX_LENGTH 250  
 
-VSYNCLOOP     .equ      5
+VSYNCLOOP     .equ      3
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jp intro_title		; main entry poitn to the code ships the memory definitions

@@ -6,6 +6,8 @@
 
 ; TODO  / bugs
 ;   when shape next to edge no logic to prevent rotation, so sticks to wall or worse goes through
+;   some shapes can move sideways into others,  incorrectly merging
+
 
 ; all the includes came from  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
 #include "zx81defs.asm" 

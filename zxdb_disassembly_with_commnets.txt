@@ -128,3 +128,34 @@ Notes:
 
 
 
+
+
+
+
+Brief Instructions - commands
+=============================
+Q - leave ZXDB
+G - execute program (if you put jp 4100 at end of your own code it will return to ZXDB
+V - view memory in Hex
+A - line of 32 bytes displayed as characters
+W - sets a window = number of lines to be used (use when single steppign)
+F - Fill a block of memory > value to be placed = start block = end of block
+E - Hex loader - write to memory
+C - compare two blocks of memory = start of first , end, start of second block
+M - Move a block of memory (start, end, start of second)
+D - disassemble
+S - Searh memory (list of two digit hex seperated by "." then enter the address to start from at =
+    -- typing C will pause allowing replace string in memory
+B - set a breakpoint (breakpoint address followed by address to start program execution
+    -- sub commands 
+        - G let program continue normally
+        - nW set memory window to n
+        - R after a CALL executes the subroutine then returns back to single step
+        - Q quites back to *
+        - L sets breakpoint to current (3 byte only) instruction
+        - O display only mnumonics of the ibnstruction
+        -nN runs the next n instructions in single step
+        - Z lets you set registers
+	- nT program only single steps when a 16bit register contains n or a memory ref is made to n
+
+

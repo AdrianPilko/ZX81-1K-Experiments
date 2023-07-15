@@ -1,0 +1,64 @@
+Bugbyte ZXDB - 1982 - Disassembly with (some?) comments
+=======================================================
+Notes: 
+1) basic program loads as normal, line 1 contains REM statement with program code, line 10 PRINT USR 16640   (0x4100) is the main entry point (not 16514 (0x4082) which is the start of the code after REM on line 1)
+2) Trying to build this up incrementatlly starting with just what subroutines are called and the start end addresses
+3) ^^ denotes jup back up to address above this (below in memory address terms)
+4) == denote a gap in code between subroutines or not looked at
+5) => denotes 
+6) Used this to help, ZX81 rom disassembly, https://k1.spdns.de/Vintage/Sinclair/80/Sinclair%20ZX81/ROMs/zx81%20version%202%20'improved'%20rom%20disassembly%20(Logan,%20O'Hara).html
+
+4082 => 409A     not sure yet what this routine does, others (409B, 40A5 jump midway in)
+
+409B => JR 4093 ^^
+40A5 => JR 4096 ^^
+40BC => 40F5   looks like a display routine and also reads key, manuall reading 4025 (FRAMES+1??), 4027 DEBOUNCE STATUS, 4025 - READ LAST KEY PRESSED, calls 0229 Main ROM display routine)
+
+
+4100 => 4169   main program code
+
+4100 JP 40F6
+4103 LD A, C5
+4105 LD (416F),A
+4108 CALL 4BB0
+410B LA A, 17
+410D CALL 416F
+4110 CALL 416A
+4113 LD A,B
+4114 CALL 416F
+4117 CALL 4BB0
+411A LD A,B
+411B CP 27         ;; COMPARE A WITH "B" CHARACTER
+411D JP Z,4980     ;; HANDLE B COMMAND - SET A BREAKPOINT
+4120 CP 29         ;; COMPARE A WITH "D" CHARACTER
+4122 JP Z,44E2     ;; HANDLE D COMMAND - DISASSEMBLE
+4125 CP 38         ;; COMPARE A WITH "S" CHARACTER
+4127 JP Z,41BF     ;; HANDLE S COMMAND - SEARCH MEMORY
+412A CP 26         ;; COMPARE A WITH "A" CHARACTER
+412C JP Z,4228     ;; HANDLE A COMMAND - VIEW MEMORY AS CHARACTERS
+412F CP 36         ;; COMPARE A WITH "Q" CHARACTER
+4131 JP Z, 46C2    ;; HANDLE "quit" COMMAND
+4134 CP 2C         ;; COMPARE A WITH "G" CHARACTER
+4136 JP Z, 415F    ;; HANDLE "EXECUTE CODE" COMMAND
+4139 CP 2B         ;; COMPARE A WITH "F" CHARACTER
+4138 JP Z, 4262    ;; HANDLE "FILL BLOCK OF MEMORY" COMMAND
+4152 CP 3B         ;; COMPARE A WITH "V" CHARACTER
+4154 JP Z, 4185    ;; HANDLE "VIEW MEMORY AS HEX" COMMAND
+4157 LD A, 0F      ;; LOAD A WITH "?" CHARACTER
+4159 CALL 416F
+415C JP 4100       ;; RESTART FROM 4100
+415F CALL 417A
+
+
+4169 RET
+4175 NOP           ;; PRESUMABLY A BIT OF PADDING JUST IN CASE EXTRA CODE NEEDED?
+4176 NOP
+4177 NOP
+4178 NOP
+4179 NOP
+417A CALL 4BB0
+417D LD A, 14      ;; LOAD A WITH "=" WHICH IS THE PROMPT TO ENTER AN ADDRESS
+
+
+
+

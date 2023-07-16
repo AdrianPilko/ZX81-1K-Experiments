@@ -1,0 +1,27 @@
+ZXbug and mocoder are available from 
+https://www.zx81stuff.org.uk/zx81/tape/
+
+ZXBug is a powerfull debugger for zx81 occupies top 4K of RAM from 0x71E0
+Mocider is a really cool tool that compiles basic into machine code
+
+Workflow to load mcoder, load basic program then compile and run then load debugger:
+1) LOAD "MCODER"
+2) RUN (normally this happens automatically)
+3) LOAD BACIC PROGRAM (Has to include the first 4 lines still of the MCODER, so start at line 10 must end with STOP
+4) change to SLOW mode
+5) LET L=USR 17389   (runcs basic compiler, may have todo twice?)
+6) after pressing O til ? and 0/0 displayed then 
+   LET L=USR 18823 to run machine code version (hex 4987)
+6) LOAD ZXBug  (will auto run)
+    Commands
+      Zxxxx yyyy    - disassemble between xxxx and yyyy
+      D - display registers
+      F - display flags
+      Gxxxx - goto (run) machine code routine at xxxx, must return with RET at end
+      Pxxxx - print block of 64 bytes
+      X - exit
+7) if exited (using X command) then re-run ZXBug with PRINT
+
+
+
+

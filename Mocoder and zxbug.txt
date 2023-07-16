@@ -20,6 +20,9 @@ Workflow to load mcoder, load basic program then compile and run then load debug
       Gxxxx - goto (run) machine code routine at xxxx, must return with RET at end
       Pxxxx - print block of 64 bytes
       X - exit
+e.g.      
+Z4987 49EB print 64 bytes from where MCoder puts the "compiled" basic code 
+      
 7) if exited (using X command) then re-run ZXBug with PRINT
 
 

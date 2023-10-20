@@ -22,7 +22,8 @@ ballpos:
     DEFW $0000         ;; these were just addresses in the machine code, here define a label
 direction:
     DEFW $0000         ;; these were just addresses in the machine code, here define a label
-    
+batpos:    
+    DEFW $0000         ;; these were just addresses in the machine code, here define a label
     
 breakout:
     ld hl,(D_FILE)
@@ -91,6 +92,51 @@ restart:
     ld (hl), a
     inc hl
     ld (hl), a
+    ld (batpos), hl
+    inc hl
+    ld (hl), a
+    inc hl
+    ld (hl), a
+    ld b, $18
+erase:    
+    inc hl
+    ld (hl), $00
+    djnz erase
+    ld hl, $0000
+    jr delay
+
+loop:                    ; this is the main game loop
+    ld hl, (speed)
+delay:
+    dec hl
+    ld a, h
+    or l
+    jr nz, delay
+    inc b
+    bit 0, b            ; only move ball every other time
+    jr nz, movebat
+moveball:
+    ld hl, (ballpos)
+    ld (hl), $00
+    ld de, (direction)
+    add hl, de
+    ld a, (hl)
+    cp $1b
+    jr z, restart
+    ld c, a
+    and $f7
+    jr nz, dontmove
+    ld (hl), $34
+    ld (ballpos), hl    
+dontmove:
+    or c
+    jp z, movebat
+    push hl
+    
+    
+movebat:    
+    jp loop  ;; just until we've typed in the rest of the code
+
 	ret
 
 #include "line2.asm"

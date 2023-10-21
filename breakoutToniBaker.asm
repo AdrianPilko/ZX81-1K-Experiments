@@ -13,10 +13,14 @@
 #include "line1.asm"
     jp breakout
 
+;;; ball "directions", used to add or subract ball position to move diagonally down left or right (tablestartlow) then up left right - these are offsets which with the code to moveball causes the ball to move in screen memory
+tablestart:
 tablestartlow:
-    DEFW $0020, $0022
-tablestarthigh:    
-    DEFW $ffe0, $ffde
+    DEFW $0020         ;; 31 to move ball down and to left
+    DEFW $0022         ;; 33 to move ball down and to right
+tablestarthigh:        
+    DEFW $ffe0         ;; -31 when taken as twos compliment up and right
+    DEFW $ffde         ;; -33 when taken as twos compliment up and left
 ballinit:
     DEFW $0000         ;; these were just addresses in the machine code, here define a label
 speed:     
@@ -28,13 +32,13 @@ direction:
 batpos:    
     DEFW $0000         ;; these were just addresses in the machine code, here define a label
 seed:    
-    DEFW $0ee1         ;; these were just addresses in the machine code, here define a label
+    DEFW $ffde         ;; these were just addresses in the machine code, here define a label
    
 breakout:
     ld hl,(D_FILE)
-    ld de,$0084   ;; increased by one from book listing (bug?)
+    ld de,$0085 
     add hl,de
-    ld bc,$8080   
+    ld bc,$8080   ; b is number of bricks, c is 128 (0x80) which is black square for sides and top boarder
 nxbrk:
     inc hl
     ld a,(hl)
@@ -42,14 +46,14 @@ nxbrk:
     jr z, nxbrk
     ld (hl), $08
     djnz nxbrk
-    ld hl, (D_FILE)
+    ld hl, (D_FILE)  ; initialise the top part of boarder
     ld b,$1e
 nxbl:
     inc hl
     ld (hl), c
     djnz nxbl
     inc hl
-    ld (hl), $9c
+    ld (hl), $9c      ; current score inverse video "0" character
     inc hl
     ld (hl), c
     inc hl
@@ -64,6 +68,7 @@ sides:
     inc hl
     djnz sides
     ld b, $20
+    inc hl
 base:
     ld (hl), $1b
     inc hl
@@ -118,14 +123,14 @@ delay:
     or l
     jr nz, delay
     inc b
-    bit 0, b            ; only move ball every other time
+    bit $00, b            ; only move ball every other time
     jr nz, movebat
 moveball:
     ld hl, (ballpos)
     ld (hl), $00
-    ld de, (direction)
+    ld de, (direction)    ; initital direction is stored as twos compliment so add is subtract 0xffe0 = 0xffff - 0xffe0 = 31 hence this will move ball diagonally to left up to right
     add hl, de
-    ld a, (hl)
+    ld a, (hl)            ; check contents of next ball position
     cp $1b
     jr z, restart
     ld c, a
@@ -137,7 +142,8 @@ dontmove:
     or c
     jr z, movebat
     push hl    
-    ld hl, (seed)
+    ;ld hl, (seed)
+    ld hl, ($4032)
     ld d, h
     ld e, l
     add hl, hl
@@ -147,17 +153,22 @@ dontmove:
     add hl, hl
     add hl, hl    
     add hl, de    
-    ld (seed), hl  
+    ;;ld (seed), hl  
+    ld ($4032), hl
     ld a, h
     and $06
+  
     add a, (tablestartlow)   ;;; only tablestart is mentioned in book???
+    ;;add a, tablestart
     ld l, a
     ld h, (tablestarthigh)
+    ;;ld h, tablestart       
     ld e, (hl)
     inc hl
     ld d,(hl)
     ld (direction), de
     pop hl
+    
     ld a, c
     cp $08
     jr nz, moveball

@@ -14,13 +14,16 @@
     jp breakout
 
 ;;; ball "directions", used to add or subract ball position to move diagonally down left or right (tablestartlow) then up left right - these are offsets which with the code to moveball causes the ball to move in screen memory
-tablestart:
 tablestartlow:
-    DEFW $0020         ;; 31 to move ball down and to left
-    DEFW $0022         ;; 33 to move ball down and to right
+    DEFB $00
 tablestarthigh:        
-    DEFW $ffe0         ;; -31 when taken as twos compliment up and right
-    DEFW $ffde         ;; -33 when taken as twos compliment up and left
+    DEFB $20         ;; 31 to move ball down and to left
+    DEFB $00
+    DEFB $22         ;; 33 to move ball down and to right
+    DEFB $ff
+    DEFB $e0         ;; -31 when taken as twos compliment up and right
+    DEFB $ff
+    DEFB $de         ;; -33 when taken as twos compliment up and left
 ballinit:
     DEFW $0000         ;; these were just addresses in the machine code, here define a label
 speed:     
@@ -32,7 +35,7 @@ direction:
 batpos:    
     DEFW $0000         ;; these were just addresses in the machine code, here define a label
 seed:    
-    DEFW $ffde         ;; these were just addresses in the machine code, here define a label
+    DEFW $ffe0         ;; these were just addresses in the machine code, here define a label
    
 breakout:
     ld hl,(D_FILE)
@@ -142,8 +145,7 @@ dontmove:
     or c
     jr z, movebat
     push hl    
-    ;ld hl, (seed)
-    ld hl, ($4032)
+    ld hl, (seed)
     ld d, h
     ld e, l
     add hl, hl
@@ -153,16 +155,12 @@ dontmove:
     add hl, hl
     add hl, hl    
     add hl, de    
-    ;;ld (seed), hl  
-    ld ($4032), hl
+    ld (seed), hl      
     ld a, h
     and $06
-  
-    add a, (tablestartlow)   ;;; only tablestart is mentioned in book???
-    ;;add a, tablestart
+    add a, (tablestartlow)
     ld l, a
-    ld h, (tablestarthigh)
-    ;;ld h, tablestart       
+    ld h, (tablestarthigh)    
     ld e, (hl)
     inc hl
     ld d,(hl)

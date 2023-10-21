@@ -24,6 +24,12 @@ direction:
     DEFW $0000         ;; these were just addresses in the machine code, here define a label
 batpos:    
     DEFW $0000         ;; these were just addresses in the machine code, here define a label
+seed:    
+    DEFW $0000         ;; these were just addresses in the machine code, here define a label
+tablestartlow:
+    DEFB $00         ;; these were just addresses in the machine code, here define a label
+tablestarthigh:
+    DEFB $00         ;; these were just addresses in the machine code, here define a label
     
 breakout:
     ld hl,(D_FILE)
@@ -132,13 +138,111 @@ dontmove:
     or c
     jp z, movebat
     push hl
-    
-    
+    ld hl,(seed)
+    ld a, h
+    and $06
+    add a, tablestartlow
+    ld l, a
+    ld h, tablestarthigh
+    ld e, (hl)
+    inc hl
+    ld d,(hl)
+    ld (direction), de
+    pop hl
+    ld a, c
+    cp $08
+    jr nz, moveball
+    ld hl, (D_FILE)
+    ld de, $001f
+    add hl, de
+carry:
+    ld a, (hl)
+    cp $80
+    jr nz, digit
+    ld a, $9c
+digit:
+    inc a
+    cp $a6
+    jr z, increased
+    ld (hl), $9c
+    dec hl
+    jr carry
+increased:
+    ld (hl), a       
 movebat:    
+    push bc
+    call kscan    ;;; was on page 95 of book :)
+    pop bc
+    ld a, l
+    cp l
+    push af
+    and $0f
+    jr z, notleft
+    ld hl, (batpos)
+    dec hl
+    dec hl
+    dec hl    
+    ld a, (hl)
+    cp $80
+    jr z, cycle1
+    ld (hl), $03
+    inc hl
+    inc hl
+    ld (batpos), hl
+    inc hl
+    inc hl
+    inc hl
+    ld (hl), 00        
+notleft:    
+    pop af
+    jr z, cycle2
+    ld hl, (batpos)
+    inc hl
+    inc hl
+    inc hl
+    ld a, (hl)
+    cp $80
+    jr z, cycle2
+    ld (hl), $03
+    dec hl
+    dec hl
+    ld (batpos), hl
+    dec hl
+    dec hl
+    dec hl
+    ld (hl), 00
+    push hl
+cycle1:
+    pop hl
+cycle2:
     jp loop  ;; just until we've typed in the rest of the code
 
-	ret
+	ret  ;;; never gets here
 
+
+kscan:
+    ld hl, $ffff
+    ld bc, $fefe
+    in a, (c)
+    or $01
+kscanloop:     
+    or $e0
+    ld d, a
+    cpl
+    sbc a, a
+    or b
+    and l
+    ld l, a
+    ld a, h
+    and d
+    ld h, a
+    rlc b
+    in a, (c)
+    jr c, kscanloop
+    rra
+    rl h
+    ret
+    
 #include "line2.asm"
 #include "screenFull.asm"      			; definition of the screen memory, in colapsed version for 1K        
 #include "endbasic.asm"

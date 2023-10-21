@@ -7,5 +7,9 @@ del *.sym
 call zxasm breakoutToniBaker
 
 REM call will auto run emulator EightyOne if installed
-REM comment in or out usin rem which one to run
-call breakoutToniBaker.p
+REM comme0nt in or out usin rem which one to run
+IF EXIST "breakoutToniBaker.p" (
+  call breakoutToniBaker.p
+) ELSE (
+  PAUSE
+)

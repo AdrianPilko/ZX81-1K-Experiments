@@ -12,7 +12,10 @@
 #include "zx81sys.asm"
 #include "line1.asm"
     jp breakout
+
+tablestartlow:
     DEFW $0020, $0022
+tablestarthigh:    
     DEFW $ffe0, $ffde
 ballinit:
     DEFW $0000         ;; these were just addresses in the machine code, here define a label
@@ -25,12 +28,8 @@ direction:
 batpos:    
     DEFW $0000         ;; these were just addresses in the machine code, here define a label
 seed:    
-    DEFW $0000         ;; these were just addresses in the machine code, here define a label
-tablestartlow:
-    DEFB $00         ;; these were just addresses in the machine code, here define a label
-tablestarthigh:
-    DEFB $00         ;; these were just addresses in the machine code, here define a label
-    
+    DEFW $0ee1         ;; these were just addresses in the machine code, here define a label
+   
 breakout:
     ld hl,(D_FILE)
     ld de,$0084   ;; increased by one from book listing (bug?)
@@ -136,14 +135,24 @@ moveball:
     ld (ballpos), hl    
 dontmove:
     or c
-    jp z, movebat
-    push hl
-    ld hl,(seed)
+    jr z, movebat
+    push hl    
+    ld hl, (seed)
+    ld d, h
+    ld e, l
+    add hl, hl
+    add hl, hl
+    add hl, de
+    add hl, hl
+    add hl, hl
+    add hl, hl    
+    add hl, de    
+    ld (seed), hl  
     ld a, h
     and $06
-    add a, tablestartlow
+    add a, (tablestartlow)   ;;; only tablestart is mentioned in book???
     ld l, a
-    ld h, tablestarthigh
+    ld h, (tablestarthigh)
     ld e, (hl)
     inc hl
     ld d,(hl)
@@ -152,8 +161,9 @@ dontmove:
     ld a, c
     cp $08
     jr nz, moveball
-    ld hl, (D_FILE)
-    ld de, $001f
+
+    ld hl, (D_FILE)    ; increase score       
+    ld de, $001f    ; position of score in boarder?
     add hl, de
 carry:
     ld a, (hl)
@@ -163,18 +173,20 @@ carry:
 digit:
     inc a
     cp $a6
-    jr z, increased
+    jr nz, increased
     ld (hl), $9c
     dec hl
     jr carry
 increased:
-    ld (hl), a       
+    ld (hl), a           
+
+    
 movebat:    
     push bc
     call kscan    ;;; was on page 95 of book :)
     pop bc
     ld a, l
-    cp l
+    cpl
     push af
     and $0f
     jr z, notleft
@@ -195,6 +207,7 @@ movebat:
     ld (hl), 00        
 notleft:    
     pop af
+    and $f0
     jr z, cycle2
     ld hl, (batpos)
     inc hl
@@ -229,6 +242,7 @@ kscanloop:
     or $e0
     ld d, a
     cpl
+    cp $01
     sbc a, a
     or b
     and l

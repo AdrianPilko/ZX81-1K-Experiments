@@ -158,9 +158,9 @@ dontmove:
     ld (seed), hl      
     ld a, h
     and $06
-    add a, (tablestartlow)
+    add a, tablestartlow
     ld l, a
-    ld h, (tablestarthigh)    
+    ld h, tablestarthigh
     ld e, (hl)
     inc hl
     ld d,(hl)

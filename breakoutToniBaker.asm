@@ -43,7 +43,10 @@ rightFlag:                 ;; if the ball is moving right == 1 else 0
     DEFB $01            ; default is ball moving up and to right
 wallFlag    
     DEFB $00
-    
+topWallFlag
+    DEFW $0000
+topRow    
+    DEFW $0000
 breakout:
     ld hl,(D_FILE)
     ld de,$0085 
@@ -84,11 +87,20 @@ base:
     inc hl
     djnz base
     
-    ld de, $fefc
+
+    ld de, $fefc   ;; this only works because of the last value of hl from previous loop
+    ;;ld de, $4a   ; for debug put it above top to test bounce3 of top wall
+    ;;ld hl, (D_FILE) ; for debug put it above top to test bounce3 of top wall
     add hl, de
     ld (ballinit), hl
-    ld hl, $0900
+    ld hl, $03f0
     ld (speed), hl
+    
+    ld hl, (D_FILE)
+    ld de, $1e
+    
+    add hl, de
+    ld (topRow), hl
 restart:
     ld hl, (ballinit)
     inc hl
@@ -163,9 +175,31 @@ dontmove:
     ld a, c
     cp $80                  ; check if the next position is a the wall
     jp nz, checkIfNextIsBat
+    
+    ;; check if this is the "top wall"
+    ld hl,(ballpos)  ; Load the first 16-bit value into HL
+    ld de,(topRow)  ; Load the second 16-bit value into DE
+
+    ld a, h    ; Load the high byte of HL into the accumulator
+    sub d      ; Subtract the high byte of DE from the accumulator
+    jr nz, notTopWall  ; Jump if no carry (HL >= DE)
+
+    ; If there was a carry, the high byte of HL is less than DE
+    ; Now, compare the low bytes (least significant bytes)
+    ld a, l    ; load the low byte of hl into the accumulator
+    sub e      ; subtract the low byte of de from the accumulator
+    jr z, notTopWall  ; jump if no carry (hl >= de)
+
+less_than:
+    ; Your code to handle the case where HL is less than DE        
+    ld a, $01    
+    ld (topWallFlag), a
+    jp checkDirectionChanges  
+notTopWall:    
     ld a, $01
     ld (wallFlag), a
     jp checkDirectionChanges
+
     
 checkIfNextIsBat:    
     ld a, c
@@ -195,10 +229,16 @@ checkDirectionChanges:
     cp $01
     jp nz, checkif_switchUpRight
     
+    
+    ;; need to check topWallFlag    
+    ld a, (topWallFlag)
+    cp $01    
+    jp z, switchDownRight
+    
     ld a, (wallFlag)
     cp $01
     jp z, switchUpLeft
-    
+
     jp switchDownRight
     
     ; if upFlag==0 & rightFlag==1 then switchUpRight
@@ -209,6 +249,11 @@ checkif_switchUpRight:
     ld a, (rightFlag)    
     cp $01
     jp nz, checkif_switchDownLeft   
+    
+    ld a, (wallFlag)
+    cp $01
+    jp z, switchDownLeft
+    
     jp switchUpRight
     
     ; if upFlag==1 & rightFlag==0 then switchDownLeft
@@ -219,7 +264,12 @@ checkif_switchDownLeft:
     ld a, (rightFlag)    
     cp $01
     jp z, checkif_switchUpLeft
-    
+
+    ;; need to check topWallFlag    
+    ld a, (topWallFlag)
+    cp $01    
+    jp z, switchDownRight
+        
     ld a, (wallFlag)
     cp $01
     jp z, switchUpRight
@@ -228,7 +278,11 @@ checkif_switchDownLeft:
 
     ; if upFlag==0 & rightFlag==0 then switchUpLeft        
 checkif_switchUpLeft:        
-;; no check as is last option
+;; now only check for wall
+    ld a, (wallFlag)
+    cp $01
+    jp z, switchDownRight
+
     jp switchUpLeft
     
     
@@ -243,6 +297,7 @@ switchUpLeft:
     xor a
     ld (rightFlag), a    
     ld (wallFlag), a
+    ld (topWallFlag), a
     jp skipChangeDirection
     
     
@@ -256,7 +311,7 @@ switchDownLeft:
     ld (upFlag), a
     ld (rightFlag), a            
     ld (wallFlag), a
-    
+    ld (topWallFlag), a
     jp skipChangeDirection
 switchUpRight:
     ld a, (dirTabUpRight)
@@ -269,6 +324,7 @@ switchUpRight:
     ld (rightFlag), a            
     xor a
     ld (wallFlag), a
+    ld (topWallFlag), a
     jp skipChangeDirection
 switchDownRight:
     ld a, (dirTabDownRight)
@@ -282,6 +338,7 @@ switchDownRight:
     ld (rightFlag), a            
     xor a
     ld (wallFlag), a
+    ld (topWallFlag), a
     jp skipChangeDirection
     
 skipChangeDirection:
@@ -292,6 +349,7 @@ skipChangeDirection:
     ld a, c
     cp $08                  ; if the contents of the square is not a brick
                             ; then move again
+                            
     jp nz, moveball
 
     ld hl, (D_FILE)    ; increase score       

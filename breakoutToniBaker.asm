@@ -14,14 +14,17 @@
     jp breakout
 
 ;;; ball "directions", used to add or subract ball position to move diagonally down left or right (tablestartlow) then up left right - these are offsets which with the code to moveball causes the ball to move in screen memory
-tablestartlow:
-    DEFB $00
-tablestarthigh:        
+tablestart:
+dirTabDownLeft:
+    DEFB $00   
     DEFB $20         ;; 31 to move ball down and to left
+dirTabDownRight:    
     DEFB $00
     DEFB $22         ;; 33 to move ball down and to right
+dirTabUpRight:
     DEFB $ff
     DEFB $e0         ;; -31 when taken as twos compliment up and right
+dirTabUpLeft:    
     DEFB $ff
     DEFB $de         ;; -33 when taken as twos compliment up and left
 ballinit:
@@ -34,9 +37,11 @@ direction:
     DEFW $0000         ;; these were just addresses in the machine code, here define a label
 batpos:    
     DEFW $0000         ;; these were just addresses in the machine code, here define a label
-seed:    
-    DEFW $ffe0         ;; these were just addresses in the machine code, here define a label
-   
+upFlag:                 ;; if the ball is moving up == 1 else 0
+    DEFB $01            ; default is ball moving up and to right
+rightFlag:                 ;; if the ball is moving right == 1 else 0
+    DEFB $01            ; default is ball moving up and to right
+    
 breakout:
     ld hl,(D_FILE)
     ld de,$0085 
@@ -90,6 +95,11 @@ restart:
     ld (hl), $34        ; print the ball
     ld hl, $ffe0        ; set initial direction
     ld (direction), hl
+    
+    ld a, $01               ; default ball move up and to right
+    ld (upFlag), a
+    ld a, $01
+    ld (rightFlag), a    
     ld a, (speed)
     dec a
     ret z
@@ -127,7 +137,7 @@ delay:
     jr nz, delay
     inc b
     bit $00, b            ; only move ball every other time
-    jr nz, movebat
+    jp nz, movebat
 moveball:
     ld hl, (ballpos)
     ld (hl), $00
@@ -143,33 +153,113 @@ moveball:
     ld (ballpos), hl    
 dontmove:
     or c
-    jr z, movebat
+    jp z, movebat
     push hl    
-    ld hl, (seed)
-    ld d, h
-    ld e, l
-    add hl, hl
-    add hl, hl
-    add hl, de
-    add hl, hl
-    add hl, hl
-    add hl, hl    
-    add hl, de    
-    ld (seed), hl      
-    ld a, h
-    and $06
-    add a, tablestartlow
+
+    ld a, c
+    cp $80                  ; check if the next position is a the wall
+    jp nz, checkIfNextIsBat
+    jp checkDirectionChanges
+    
+checkIfNextIsBat:    
+    ld a, c
+    cp $03                  ; check if the next position is a the bat
+    jp nz, checkIfNextIsBrick
+    ;;pop hl  ;; debug
+    ;;ret     ;; debug    
+    jp checkDirectionChanges
+    
+checkIfNextIsBrick:
+    ld a, c
+    cp $08                  ; check if the next position is a the bat    
+    jp nz, skipChangeDirection    
+    
+    ;;pop hl  ;; debug
+    ;;ret     ;; debug
+    
+    jp checkDirectionChanges
+    
+;;; code to reverse directions (warning is a bit verbose!)
+checkDirectionChanges:
+    ; if upFlag==1 & rightFlag==1 then switchDownRight
+    ld a, (upFlag)  
+    cp $01
+    jp nz, checkif_switchUpRight
+    ld a, (rightFlag)    
+    cp $01
+    jp nz, checkif_switchUpRight
+    xor a
+    ld (upFlag), a
+    jp switchDownRight
+    
+    ; if upFlag==0 & rightFlag==1 then switchUpRight
+checkif_switchUpRight:    
+    ld a, (upFlag)  
+    cp $01
+    jp z, checkif_switchDownLeft
+    ld a, (rightFlag)    
+    cp $01
+    jp nz, checkif_switchDownLeft
+    xor a
+    ld (rightFlag), a            
+   
+    jp switchUpRight
+    
+    ; if upFlag==1 & rightFlag==0 then switchDownLeft
+checkif_switchDownLeft:
+    ld a, (upFlag)  
+    cp $01
+    jp z, checkif_switchUpLeft
+    ld a, (rightFlag)    
+    cp $01
+    jp nz, checkif_switchUpLeft
+    
+    xor a
+    ld (upFlag), a
+    pop hl  ;; debug
+    ret     ;; debug      
+    jp switchDownLeft
+
+    ; if upFlag==0 & rightFlag==0 then switchUpLeft        
+checkif_switchUpLeft:    
+;; no check as is last option
+    jp switchUpLeft
+    
+    
+switchUpLeft:
+    ld a, (dirTabUpLeft)
+    ld h, a
+    ld a, (dirTabUpLeft+1)
+    ld l, a  
+    jp skipChangeDirection
+switchDownLeft:
+    ld a, (dirTabDownLeft)
+    ld h, a
+    ld a, (dirTabDownLeft+1)
     ld l, a
-    ld h, tablestarthigh
-    ld e, (hl)
-    inc hl
-    ld d,(hl)
-    ld (direction), de
+    jp skipChangeDirection
+switchUpRight:
+    ld a, (dirTabUpRight)
+    ld h, a
+    ld a, (dirTabUpRight+1)
+    ld l, a    
+    jp skipChangeDirection
+switchDownRight:
+    ld a, (dirTabDownRight)
+    ld h, a
+    ld a, (dirTabDownRight+1)
+    ld l, a
+    jp skipChangeDirection
+    
+skipChangeDirection:
+
+    ld (direction), hl; 
     pop hl
     
     ld a, c
-    cp $08
-    jr nz, moveball
+    cp $08                  ; if the contents of the square is not a brick
+                            ; then move again
+    jp nz, moveball
 
     ld hl, (D_FILE)    ; increase score       
     ld de, $001f    ; position of score in boarder?

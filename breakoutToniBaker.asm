@@ -41,6 +41,8 @@ upFlag:                 ;; if the ball is moving up == 1 else 0
     DEFB $01            ; default is ball moving up and to right
 rightFlag:                 ;; if the ball is moving right == 1 else 0
     DEFB $01            ; default is ball moving up and to right
+wallFlag    
+    DEFB $00
     
 breakout:
     ld hl,(D_FILE)
@@ -96,6 +98,8 @@ restart:
     ld hl, $ffe0        ; set initial direction
     ld (direction), hl
     
+    xor a
+    ld (wallFlag), a
     ld a, $01               ; default ball move up and to right
     ld (upFlag), a
     ld a, $01
@@ -159,6 +163,8 @@ dontmove:
     ld a, c
     cp $80                  ; check if the next position is a the wall
     jp nz, checkIfNextIsBat
+    ld a, $01
+    ld (wallFlag), a
     jp checkDirectionChanges
     
 checkIfNextIsBat:    
@@ -188,8 +194,11 @@ checkDirectionChanges:
     ld a, (rightFlag)    
     cp $01
     jp nz, checkif_switchUpRight
-    xor a
-    ld (upFlag), a
+    
+    ld a, (wallFlag)
+    cp $01
+    jp z, switchUpLeft
+    
     jp switchDownRight
     
     ; if upFlag==0 & rightFlag==1 then switchUpRight
@@ -199,29 +208,26 @@ checkif_switchUpRight:
     jp z, checkif_switchDownLeft
     ld a, (rightFlag)    
     cp $01
-    jp nz, checkif_switchDownLeft
-    xor a
-    ld (rightFlag), a            
-   
+    jp nz, checkif_switchDownLeft   
     jp switchUpRight
     
     ; if upFlag==1 & rightFlag==0 then switchDownLeft
 checkif_switchDownLeft:
     ld a, (upFlag)  
     cp $01
-    jp z, checkif_switchUpLeft
+    jp nz, checkif_switchUpLeft
     ld a, (rightFlag)    
     cp $01
-    jp nz, checkif_switchUpLeft
+    jp z, checkif_switchUpLeft
     
-    xor a
-    ld (upFlag), a
-    pop hl  ;; debug
-    ret     ;; debug      
+    ld a, (wallFlag)
+    cp $01
+    jp z, switchUpRight
+
     jp switchDownLeft
 
     ; if upFlag==0 & rightFlag==0 then switchUpLeft        
-checkif_switchUpLeft:    
+checkif_switchUpLeft:        
 ;; no check as is last option
     jp switchUpLeft
     
@@ -231,24 +237,51 @@ switchUpLeft:
     ld h, a
     ld a, (dirTabUpLeft+1)
     ld l, a  
+    
+    ld a, $01
+    ld (upFlag), a
+    xor a
+    ld (rightFlag), a    
+    ld (wallFlag), a
     jp skipChangeDirection
+    
+    
 switchDownLeft:
     ld a, (dirTabDownLeft)
     ld h, a
     ld a, (dirTabDownLeft+1)
     ld l, a
+
+    xor a
+    ld (upFlag), a
+    ld (rightFlag), a            
+    ld (wallFlag), a
+    
     jp skipChangeDirection
 switchUpRight:
     ld a, (dirTabUpRight)
     ld h, a
     ld a, (dirTabUpRight+1)
     ld l, a    
+
+    ld a, $01
+    ld (upFlag), a
+    ld (rightFlag), a            
+    xor a
+    ld (wallFlag), a
     jp skipChangeDirection
 switchDownRight:
     ld a, (dirTabDownRight)
     ld h, a
     ld a, (dirTabDownRight+1)
     ld l, a
+    
+    xor a
+    ld (upFlag), a    
+    ld a, $01    
+    ld (rightFlag), a            
+    xor a
+    ld (wallFlag), a
     jp skipChangeDirection
     
 skipChangeDirection:

@@ -5,6 +5,8 @@
 ;;; The code heavily!! dependant on the definition of the screen memory in screen.asm
 ;;;;;;;;;;;;;;;;;;;;;
 
+#define DEBUG_PRINT
+
 ; all the includes came from  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
 #include "zx81defs.asm" 
 #include "zx81rom.asm"
@@ -89,8 +91,10 @@ base:
     
 
     ld de, $fefc   ;; this only works because of the last value of hl from previous loop
-    ;;ld de, $4a   ; for debug put it above top to test bounce3 of top wall
-    ;;ld hl, (D_FILE) ; for debug put it above top to test bounce3 of top wall
+#ifdef DEBUG_PRINT        
+    ld de, $4a   ; for debug put it above top to test bounce3 of top wall
+    ld hl, (D_FILE) ; for debug put it above top to test bounce3 of top wall
+#endif    
     add hl, de
     ld (ballinit), hl
     ld hl, $03f0
@@ -121,7 +125,11 @@ restart:
     ret z
     ld (speed), a
     ld hl, (D_FILE)
-    ld de,  $02b7
+#ifdef DEBUG_PRINT    
+    ld de,  $0296
+#else    
+    ld de,  $02b7   ;; to allow for debug print raise by one line
+#endif
     add hl, de
     ld (hl),$00
     ld a, $03
@@ -166,19 +174,25 @@ moveball:
     and $f7
     jr nz, dontmove
     ld (hl), $34
-    ld (ballpos), hl    
+    ld (ballpos), hl        
 dontmove:
     or c
     jp z, movebat
     push hl    
 
     ld a, c
+#ifdef DEBUG_PRINT        
+    call debugPrintRegisters
+#endif        
     cp $80                  ; check if the next position is a the wall
     jp nz, checkIfNextIsBat
     
     ;; check if this is the "top wall"
     ld hl,(ballpos)  ; Load the first 16-bit value into HL
     ld de,(topRow)  ; Load the second 16-bit value into DE
+#ifdef DEBUG_PRINT    
+    ;call debugPrintRegisters
+#endif
 
     ld a, h    ; Load the high byte of HL into the accumulator
     sub d      ; Subtract the high byte of DE from the accumulator
@@ -205,18 +219,21 @@ checkIfNextIsBat:
     ld a, c
     cp $03                  ; check if the next position is a the bat
     jp nz, checkIfNextIsBrick
-    ;;pop hl  ;; debug
-    ;;ret     ;; debug    
+
     jp checkDirectionChanges
     
 checkIfNextIsBrick:
     ld a, c
+#ifdef DEBUG_PRINT        
+  ;  call debugPrintRegisters
+#endif    
+    
     cp $08                  ; check if the next position is a the bat    
     jp nz, skipChangeDirection    
     
-    ;;pop hl  ;; debug
-    ;;ret     ;; debug
-    
+#ifdef DEBUG_PRINT        
+    ;call debugPrintRegisters
+#endif    
     jp checkDirectionChanges
     
 ;;; code to reverse directions (warning is a bit verbose!)
@@ -421,6 +438,99 @@ cycle2:
     jp loop  ;; just until we've typed in the rest of the code
 
 	ret  ;;; never gets here
+    
+    
+    
+    
+debugPrintRegisters
+    ; take copy of all the registers
+    push hl
+    push de
+    push af    
+    push bc
+    
+    ; position the cursor
+    ;set b to row, c to first col, which is the last row    
+    ld b, 0     ; have seen strange thing when debug comes out and bug happens it drops one line
+    ld c, 1
+    ld b, 21        
+    call PRINTAT
+    pop bc
+    pop af
+    pop de
+    pop hl    
+    
+    push hl
+    push de
+    push af    
+    push bc
+    
+    ld a, a
+    call hprint    
+    ld a, 14
+    call PRINT  
+
+    ld a, h
+    call hprint    
+    ld a, l    
+    call hprint
+    ld a, 14
+    call PRINT
+       
+    ld a, d
+    call hprint
+    ld a, e
+    call hprint
+    ld a, 14
+    call PRINT
+
+    ld a, b
+    call hprint
+    ld a, c
+    call hprint    
+    ld a, 14
+    call PRINT      
+  
+    ;;print a couple of memory locations
+    ld hl, (topRow) 
+    ld a, h
+    call hprint    
+    ld a, l
+    call hprint      
+    ld a, 14
+    call PRINT
+
+    ld hl, (ballpos) 
+    ld a, h
+    call hprint    
+    ld a, l
+    call hprint    
+    ld a, 14
+    call PRINT
+
+    ;restore registers (in correct reverse order!)        
+    pop bc
+    pop af
+    pop de
+    pop hl
+    
+    ret
+    
+hprint 		;;http://swensont.epizy.com/ZX81Assembly.pdf?i=1
+	push af ;store the original value of a for later
+	and $f0 ; isolate the first digit
+	rra
+	rra
+	rra
+	rra
+	add a,$1c ; add 28 to the character code
+	call PRINT ;
+	pop af ; retrieve original value of a
+	and $0f ; isolate the second digit
+	add a,$1c ; add 28 to the character code
+	call PRINT
+	ret
+    
 
 
 kscan:

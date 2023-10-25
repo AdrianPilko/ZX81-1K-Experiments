@@ -5,7 +5,7 @@
 ;;; The code heavily!! dependant on the definition of the screen memory in screen.asm
 ;;;;;;;;;;;;;;;;;;;;;
 
-#define DEBUG_PRINT
+;#define DEBUG_PRINT
 
 ; all the includes came from  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
 #include "zx81defs.asm" 
@@ -61,20 +61,37 @@ nxbrk:
     jr z, nxbrk
     ld (hl), $08
     djnz nxbrk
+    ld bc,$8080   ; b is number of bricks, c is 128 (0x80) which is black square for sides and top boarder    
+nxbrk2:
+    inc hl
+    ld a,(hl)
+    cp $76
+    jr z, nxbrk2
+    ld (hl), $08
+    djnz nxbrk2   
     ld hl, (D_FILE)  ; initialise the top part of boarder
-    ld b,$1e
+    ld b,$1e  
 nxbl:
     inc hl
     ld (hl), c
-    djnz nxbl
-    inc hl
+    djnz nxbl  
+    inc hl    
     ld (hl), $9c      ; current score inverse video "0" character
     inc hl
     ld (hl), c
+    ld hl, (D_FILE)  ; initialise the top part of boarder    
+    ld de, $22
+    add hl, de    
+    ld b,$1f
+nxbl2:
+    ld (hl), c
+    inc hl
+    djnz nxbl2
+    ld (hl), c   ; last wall block on second row
     inc hl
     inc hl
     ld de,$001f
-    ld b, $17
+    ld b, $17 
 sides:
     ld (hl), c
     add hl, de
@@ -91,13 +108,17 @@ base:
     
 
     ld de, $fefc   ;; this only works because of the last value of hl from previous loop
-#ifdef DEBUG_PRINT        
+#ifdef DEBUG_START_BALL_TOP        
     ld de, $4a   ; for debug put it above top to test bounce3 of top wall
     ld hl, (D_FILE) ; for debug put it above top to test bounce3 of top wall
 #endif    
     add hl, de
     ld (ballinit), hl
-    ld hl, $03f0
+#ifdef DEBUG_SLOW
+    ld hl, $0e00       ;; the delay loops for debug slower
+#else    
+    ld hl, $03f0       ;; the delay loops
+#endif
     ld (speed), hl
     
     ld hl, (D_FILE)
@@ -191,16 +212,22 @@ dontmove:
     ld hl,(ballpos)  ; Load the first 16-bit value into HL
     ld de,(topRow)  ; Load the second 16-bit value into DE
 #ifdef DEBUG_PRINT    
-    ;call debugPrintRegisters
+    call debugPrintRegisters
 #endif
 
     ld a, h    ; Load the high byte of HL into the accumulator
+#ifdef DEBUG_PRINT    
+    call debugPrintRegisters
+#endif    
     sub d      ; Subtract the high byte of DE from the accumulator
     jr nz, notTopWall  ; Jump if no carry (HL >= DE)
 
     ; If there was a carry, the high byte of HL is less than DE
     ; Now, compare the low bytes (least significant bytes)
     ld a, l    ; load the low byte of hl into the accumulator
+#ifdef DEBUG_PRINT    
+    call debugPrintRegisters
+#endif        
     sub e      ; subtract the low byte of de from the accumulator
     jr z, notTopWall  ; jump if no carry (hl >= de)
 
@@ -224,15 +251,15 @@ checkIfNextIsBat:
     
 checkIfNextIsBrick:
     ld a, c
-#ifdef DEBUG_PRINT        
-  ;  call debugPrintRegisters
-#endif    
+#ifdef DEBUG_PRINT    
+    call debugPrintRegisters
+#endif
     
     cp $08                  ; check if the next position is a the bat    
     jp nz, skipChangeDirection    
     
-#ifdef DEBUG_PRINT        
-    ;call debugPrintRegisters
+#ifdef DEBUG_PRINT    
+    call debugPrintRegisters
 #endif    
     jp checkDirectionChanges
     

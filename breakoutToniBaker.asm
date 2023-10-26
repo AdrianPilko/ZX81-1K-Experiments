@@ -129,7 +129,7 @@ base:
     ld hl, $0e00       ;; the delay loops for debug slower
 #else    
     ;ld hl, $03f0       ;; the delay loops
-    ld hl, $0900
+    ld hl, $04f0
 #endif
     ld (speed), hl
     
@@ -139,7 +139,7 @@ base:
     add hl, de
     ld (topRow), hl
     
-    push bc
+    
     ld a, $10 
     daa
     ld (lives), a   
@@ -155,19 +155,28 @@ base:
     ld bc,20
 	ld de,top_row_text_score
 	call printstring	   
-    pop bc
+    
     jp first_time ;; don't dec lives first time through
     
 restart:
     
     ld a, (lives)   
     dec a
+    cp 0
+    jp z, breakout   ; do full restart
     daa
     ld (lives), a
+    ld c, 7
+    ld b, 0        
+    call PRINTAT
+    ld a, (lives)
+    call hprint       
+    
 first_time:    
 
     ld hl, (ballinit)
-    inc hl
+    inc hl           ;; instead of this sneaky inc to stop repeating checkerboard could  bat  
+                     ;; use direction of later to kick ball left/right by 2
     ld (ballinit), hl
     ld (ballpos), hl
     ld (hl), $34        ; print the ball
@@ -229,7 +238,7 @@ moveball:
     add hl, de
     ld a, (hl)            ; check contents of next ball position
     cp $1b
-    jr z, restart
+    jp z, restart
     ld c, a
     and $f7
     jr nz, dontmove

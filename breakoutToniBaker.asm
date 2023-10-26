@@ -5,6 +5,11 @@
 ;;; The code heavily!! dependant on the definition of the screen memory in screen.asm
 ;;;;;;;;;;;;;;;;;;;;;
 
+;; some changes from the book type-in version:
+;;          corrected the errors in the next "ballpos" logic, more verbose but works 
+;;          added "lives"
+;;          added more blocks to remove
+
 ;#define DEBUG_PRINT
 
 ; all the includes came from  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
@@ -49,6 +54,13 @@ topWallFlag
     DEFW $0000
 topRow    
     DEFW $0000
+lives   
+    DEFB $00
+top_row_text_lives
+	DEFB	_L,_I,_V,_E,_S,$ff
+top_row_text_score
+	DEFB	_S,_C,_O,_R,_E,$ff
+    
 breakout:
     ld hl,(D_FILE)
     ld de,$0085 
@@ -105,8 +117,7 @@ base:
     ld (hl), $1b
     inc hl
     djnz base
-    
-
+      
     ld de, $fefc   ;; this only works because of the last value of hl from previous loop
 #ifdef DEBUG_START_BALL_TOP        
     ld de, $4a   ; for debug put it above top to test bounce3 of top wall
@@ -117,7 +128,8 @@ base:
 #ifdef DEBUG_SLOW
     ld hl, $0e00       ;; the delay loops for debug slower
 #else    
-    ld hl, $03f0       ;; the delay loops
+    ;ld hl, $03f0       ;; the delay loops
+    ld hl, $0900
 #endif
     ld (speed), hl
     
@@ -126,7 +138,34 @@ base:
     
     add hl, de
     ld (topRow), hl
+    
+    push bc
+    ld a, $10 
+    daa
+    ld (lives), a   
+    ld c, 7
+    ld b, 0        
+    call PRINTAT
+    ld a, (lives)
+    call hprint    
+   
+    ld bc,0
+	ld de,top_row_text_lives
+	call printstring	    
+    ld bc,20
+	ld de,top_row_text_score
+	call printstring	   
+    pop bc
+    jp first_time ;; don't dec lives first time through
+    
 restart:
+    
+    ld a, (lives)   
+    dec a
+    daa
+    ld (lives), a
+first_time:    
+
     ld hl, (ballinit)
     inc hl
     ld (ballinit), hl
@@ -413,6 +452,14 @@ digit:
     jr carry
 increased:
     ld (hl), a           
+        
+    push bc
+    ld c, 7
+    ld b, 0        
+    call PRINTAT
+    ld a, (lives)
+    call hprint
+    pop bc
 
     
 movebat:    
@@ -558,6 +605,21 @@ hprint 		;;http://swensont.epizy.com/ZX81Assembly.pdf?i=1
 	call PRINT
 	ret
     
+; this prints at top any offset (stored in bc) from the top of the screen D_FILE
+printstring
+	ld hl,(D_FILE)
+    inc hl
+	add hl,bc	
+printstring_loop
+	ld a,(de)
+	cp $ff
+	jp z,printstring_end
+	ld (hl),a
+	inc hl
+	inc de
+	jr printstring_loop
+printstring_end	
+	ret    
 
 
 kscan:

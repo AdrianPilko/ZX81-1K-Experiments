@@ -1,16 +1,31 @@
 ;;;;;;;;;;;;;;;;;;;;;
-;;; Breakout game from the book Mastering Machine code on your zx81 1981 - Toni Baker
+;;; Breakout game from the book Mastering Machine code on your zx81 1981 - by Toni Baker
 ;;; typed in here from the assembly, rather than machine code directly on ZX81 would have used HEXLD3.
-;;;
+;;; 
+;;; Typed in and ammended by AdrianPilko(ByteForever) October 2023
 ;;; The code heavily!! dependant on the definition of the screen memory in screen.asm
 ;;;;;;;;;;;;;;;;;;;;;
 
-;; some changes from the book type-in version:
-;;          corrected the errors in the next "ballpos" logic, more verbose but works 
-;;          added "lives"
-;;          added more blocks to remove
+;; my own changes from the book type-in version:
+;;      - corrected the errors in the next "ballpos" logic, more verbose now but works 
+;;      - added "lives" count down
+;;      - added more blocks to remove
+;;      - added game over message and full restart when lives reach zero 
+;;
+;; known bugs
+;;      - sometimes, especially when hitting the upper right wall the ball disappera off into oblivion
+;;        and the game craches
+;;      - sometime when the ball is lost in bottom left of screen no restart happens
+;; todo
+;;      - would be better for the bat to impart "spin" on ball to prevent "checkerboard" effect
+;;        The book code handles this by addin one to ballinit after each life lost
+;;      - would be nice to have a high score
+
 
 ;#define DEBUG_PRINT
+;#define DEBUG_START_BALL_TOP
+;#define DEBUG_SLOW
+;#define LIVES_1
 
 ; all the includes came from  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
 #include "zx81defs.asm" 
@@ -19,47 +34,6 @@
 #include "zx81sys.asm"
 #include "line1.asm"
     jp breakout
-
-;;; ball "directions", used to add or subract ball position to move diagonally down left or right (tablestartlow) then up left right - these are offsets which with the code to moveball causes the ball to move in screen memory
-tablestart:
-dirTabDownLeft:
-    DEFB $00   
-    DEFB $20         ;; 31 to move ball down and to left
-dirTabDownRight:    
-    DEFB $00
-    DEFB $22         ;; 33 to move ball down and to right
-dirTabUpRight:
-    DEFB $ff
-    DEFB $e0         ;; -31 when taken as twos compliment up and right
-dirTabUpLeft:    
-    DEFB $ff
-    DEFB $de         ;; -33 when taken as twos compliment up and left
-ballinit:
-    DEFW $0000         ;; these were just addresses in the machine code, here define a label
-speed:     
-    DEFW $0000         ;; these were just addresses in the machine code, here define a label
-ballpos:
-    DEFW $0000         ;; these were just addresses in the machine code, here define a label
-direction:
-    DEFW $0000         ;; these were just addresses in the machine code, here define a label
-batpos:    
-    DEFW $0000         ;; these were just addresses in the machine code, here define a label
-upFlag:                 ;; if the ball is moving up == 1 else 0
-    DEFB $01            ; default is ball moving up and to right
-rightFlag:                 ;; if the ball is moving right == 1 else 0
-    DEFB $01            ; default is ball moving up and to right
-wallFlag    
-    DEFB $00
-topWallFlag
-    DEFW $0000
-topRow    
-    DEFW $0000
-lives   
-    DEFB $00
-top_row_text_lives
-	DEFB	_L,_I,_V,_E,_S,$ff
-top_row_text_score
-	DEFB	_S,_C,_O,_R,_E,$ff
     
 breakout:
     ld hl,(D_FILE)
@@ -139,20 +113,23 @@ base:
     add hl, de
     ld (topRow), hl
     
-    
-    ld a, $10 
+#ifdef LIVES_1   ; to test for end of game
+    ld a, $01
+#else    
+    ld a, $03    ; 3 lines bit mean but hey it's not meant to be easy, right ?? :)
+#endif    
     daa
     ld (lives), a   
     ld c, 7
     ld b, 0        
     call PRINTAT
     ld a, (lives)
-    call hprint    
+    call hprintInverse
    
     ld bc,0
 	ld de,top_row_text_lives
 	call printstring	    
-    ld bc,20
+    ld bc,22
 	ld de,top_row_text_score
 	call printstring	   
     
@@ -163,7 +140,7 @@ restart:
     ld a, (lives)   
     dec a
     cp 0
-    jp z, breakout   ; do full restart
+    jp z, gameover   ; do full restart (ie game over
     daa
     ld (lives), a
     ld c, 7
@@ -175,7 +152,7 @@ restart:
 first_time:    
 
     ld hl, (ballinit)
-    inc hl           ;; instead of this sneaky inc to stop repeating checkerboard could  bat  
+    ;inc hl           ;; instead of this sneaky inc to stop repeating checkerboard could  bat  
                      ;; use direction of later to kick ball left/right by 2
     ld (ballinit), hl
     ld (ballpos), hl
@@ -295,6 +272,8 @@ checkIfNextIsBat:
     cp $03                  ; check if the next position is a the bat
     jp nz, checkIfNextIsBrick
 
+    ld a, 1
+    ld (batHitFlag), a
     jp checkDirectionChanges
     
 checkIfNextIsBrick:
@@ -379,11 +358,19 @@ checkif_switchUpLeft:
     
     
 switchUpLeft:
+    ld a,  (batHitFlag)
+    cp 1
+    jp nz, afterSpinLeft
+    ld hl,(ballpos)
+    dec hl
+    ld (ballpos), hl
+afterSpinLeft:      
+
     ld a, (dirTabUpLeft)
     ld h, a
     ld a, (dirTabUpLeft+1)
     ld l, a  
-    
+
     ld a, $01
     ld (upFlag), a
     xor a
@@ -391,7 +378,7 @@ switchUpLeft:
     ld (wallFlag), a
     ld (topWallFlag), a
     jp skipChangeDirection
-    
+
     
 switchDownLeft:
     ld a, (dirTabDownLeft)
@@ -406,6 +393,14 @@ switchDownLeft:
     ld (topWallFlag), a
     jp skipChangeDirection
 switchUpRight:
+
+    ld a,  (batHitFlag)
+    cp 1
+    jp nz, afterSpinRight
+    ld hl,(ballpos)
+    inc hl
+    ld (ballpos), hl
+afterSpinRight:    
     ld a, (dirTabUpRight)
     ld h, a
     ld a, (dirTabUpRight+1)
@@ -433,8 +428,11 @@ switchDownRight:
     ld (topWallFlag), a
     jp skipChangeDirection
     
+    
 skipChangeDirection:
-
+    xor a   ; clear bat hit flag 
+    ld (batHitFlag), a
+    
     ld (direction), hl; 
     pop hl
     
@@ -467,7 +465,7 @@ increased:
     ld b, 0        
     call PRINTAT
     ld a, (lives)
-    call hprint
+    call hprintInverse
     pop bc
 
     
@@ -522,7 +520,30 @@ cycle2:
 
 	ret  ;;; never gets here
     
+gameover:
+    ld b,$ff
+gameOverDelay:    
+    push bc
+    ld bc,540
+	ld de,game_over_text
+	call printstring	        
+    ld b, $ff
+gameOverInnerDelay:
+    xor a
+    djnz gameOverInnerDelay
+    ld bc,540
+	ld de, game_over_blank_text    
+	call printstring	        
     
+    pop bc    
+    djnz gameOverDelay
+    
+    ld bc,338
+	ld de, game_over_blank_text    
+	call printstring	        
+    
+    jp breakout
+        
     
     
 debugPrintRegisters
@@ -614,6 +635,22 @@ hprint 		;;http://swensont.epizy.com/ZX81Assembly.pdf?i=1
 	call PRINT
 	ret
     
+hprintInverse 		;;http://swensont.epizy.com/ZX81Assembly.pdf?i=1
+	push af ;store the original value of a for later
+	and $f0 ; isolate the first digit
+	rra
+	rra
+	rra
+	rra
+	add a,$9c ; add 156 to the character code make it inverse (28to get to character from number +128inverse
+	call PRINT ;
+	pop af ; retrieve original value of a
+	and $0f ; isolate the second digit
+	add a,$9c ; add 28 to the character code
+	call PRINT
+	ret
+    
+    
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
 printstring
 	ld hl,(D_FILE)
@@ -656,5 +693,52 @@ kscanloop:
     ret
     
 #include "line2.asm"
-#include "screenFull.asm"      			; definition of the screen memory, in colapsed version for 1K        
+
+tablestart:
+dirTabDownLeft:
+    DEFB $00   
+    DEFB $20         ;; 31 to move ball down and to left
+dirTabDownRight:    
+    DEFB $00
+    DEFB $22         ;; 33 to move ball down and to right
+dirTabUpRight:
+    DEFB $ff
+    DEFB $e0         ;; -31 when taken as twos compliment up and right
+dirTabUpLeft:    
+    DEFB $ff
+    DEFB $de         ;; -33 when taken as twos compliment up and left
+ballinit:
+    DEFW $0000         ;; these were just addresses in the machine code, here define a label
+speed:     
+    DEFW $0000         ;; these were just addresses in the machine code, here define a label
+ballpos:
+    DEFW $0000         ;; these were just addresses in the machine code, here define a label
+direction:
+    DEFW $0000         ;; these were just addresses in the machine code, here define a label
+batpos:    
+    DEFW $0000         ;; these were just addresses in the machine code, here define a label
+upFlag:                 ;; if the ball is moving up == 1 else 0
+    DEFB $01            ; default is ball moving up and to right
+rightFlag:                 ;; if the ball is moving right == 1 else 0
+    DEFB $01            ; default is ball moving up and to right
+wallFlag    
+    DEFB $00
+topWallFlag
+    DEFW $0000
+batHitFlag
+    DEFB $00
+topRow    
+    DEFW $0000
+lives   
+    DEFB $00
+top_row_text_lives
+	DEFB	_L+128,_I+128,_V+128,_E+128,_S+128,$ff   ; the +128 makes it inverse video
+top_row_text_score
+	DEFB	_S+128,_C+128,_O+128,_R+128,_E+128,$ff  ; the +128 makes it inverse video
+game_over_text
+    DEFB	_G+128,_A+128,_M+128,_E+128,128,_O+128, _V+128,_E+128,_R+128,$ff  ; the +128 makes it inverse video
+game_over_blank_text
+    DEFB	0,0,0,0,0,0,0,0,0,$ff  ; black blocks 
+#include "screenFull.asm" 
+;;; ball "directions", used to add or subract ball position to move diagonally down left or right (tablestartlow) then up left right - these are offsets which with the code to moveball causes the ball to move in screen memory
 #include "endbasic.asm"

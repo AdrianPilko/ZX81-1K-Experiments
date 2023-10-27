@@ -6,6 +6,8 @@
 ;;; The code heavily!! dependant on the definition of the screen memory in screen.asm
 ;;;;;;;;;;;;;;;;;;;;;
 
+;; keys are any left side of keyboard moves left and any right side moves right
+
 ;; my own changes from the book type-in version:
 ;;      - corrected the errors in the next "ballpos" logic, more verbose now but works 
 ;;      - added "lives" count down

@@ -35,8 +35,7 @@
 #include "charcodes.asm"
 #include "zx81sys.asm"
 #include "line1.asm"
-    jp breakout
-    
+
 breakout:
     ld hl,(D_FILE)
     ld de,$0085 
@@ -96,13 +95,14 @@ base:
       
     ld de, $fefc   ;; this only works because of the last value of hl from previous loop
 #ifdef DEBUG_START_BALL_TOP        
-    ld de, $4a   ; for debug put it above top to test bounce3 of top wall
+    ;ld de, $4a   ; for debug put it above top to test bounce3 of top wall
+    ld de, $44   ; for debug put it above top to test bounce3 of top wall
     ld hl, (D_FILE) ; for debug put it above top to test bounce3 of top wall
 #endif    
     add hl, de
     ld (ballinit), hl
 #ifdef DEBUG_SLOW
-    ld hl, $0e00       ;; the delay loops for debug slower
+    ld hl, $1f00       ;; the delay loops for debug slower
 #else    
     ;ld hl, $03f0       ;; the delay loops
     ld hl, $04f0
@@ -230,7 +230,7 @@ dontmove:
 
     ld a, c
 #ifdef DEBUG_PRINT        
-    call debugPrintRegisters
+    ;call debugPrintRegisters
 #endif        
     cp $80                  ; check if the next position is a the wall
     jp nz, checkIfNextIsBat
@@ -244,7 +244,7 @@ dontmove:
 
     ld a, h    ; Load the high byte of HL into the accumulator
 #ifdef DEBUG_PRINT    
-    call debugPrintRegisters
+    ;call debugPrintRegisters
 #endif    
     sub d      ; Subtract the high byte of DE from the accumulator
     jr nz, notTopWall  ; Jump if no carry (HL >= DE)
@@ -253,7 +253,7 @@ dontmove:
     ; Now, compare the low bytes (least significant bytes)
     ld a, l    ; load the low byte of hl into the accumulator
 #ifdef DEBUG_PRINT    
-    call debugPrintRegisters
+    ;call debugPrintRegisters
 #endif        
     sub e      ; subtract the low byte of de from the accumulator
     jr z, notTopWall  ; jump if no carry (hl >= de)
@@ -281,14 +281,14 @@ checkIfNextIsBat:
 checkIfNextIsBrick:
     ld a, c
 #ifdef DEBUG_PRINT    
-    call debugPrintRegisters
+    ;call debugPrintRegisters
 #endif
     
     cp $08                  ; check if the next position is a the bat    
     jp nz, skipChangeDirection    
     
 #ifdef DEBUG_PRINT    
-    call debugPrintRegisters
+    ;call debugPrintRegisters
 #endif    
     jp checkDirectionChanges
     
@@ -694,8 +694,6 @@ kscanloop:
     rl h
     ret
     
-#include "line2.asm"
-
 tablestart:
 dirTabDownLeft:
     DEFB $00   
@@ -741,6 +739,8 @@ game_over_text
     DEFB	_G+128,_A+128,_M+128,_E+128,128,_O+128, _V+128,_E+128,_R+128,$ff  ; the +128 makes it inverse video
 game_over_blank_text
     DEFB	0,0,0,0,0,0,0,0,0,$ff  ; black blocks 
+
+#include "line2.asm"
 #include "screenFull.asm" 
 ;;; ball "directions", used to add or subract ball position to move diagonally down left or right (tablestartlow) then up left right - these are offsets which with the code to moveball causes the ball to move in screen memory
 #include "endbasic.asm"

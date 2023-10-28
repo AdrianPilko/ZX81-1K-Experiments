@@ -12,7 +12,7 @@
 ;;      - 
 ;;
 ;; known bugs
-;;      - 
+;;      - as yet not managed to get the program to run longer than a few seconds without full screen crash
 ;; todo
 ;;      - 
 
@@ -41,27 +41,105 @@ oneAfterStartSprint:
     jr oneAfterStartSprint    ; the code in book could not have worked it had the miusbalanced push pop hl called from start 
 start:    
     ld hl, boardDef
-    call sprint
+    call sprint     
+    ;call debugPrintRegisters
+    ;ret
+setup:
+    ld hl, (D_FILE)
+    ld de, $000e
+    add hl, de
+    ld (position), hl
+    ld hl, $0000
+    ld (lastmove), hl
+loop:
+    ld hl, (D_FILE)
+    ld de, $008b
+    add hl, de
+decimal:    
+    ld a, (hl)
+    and a
+    jr nz, positive
+    ld b, $05
+reset:
+    inc  hl
+    ld (hl), $1c
     ret
+positive:    
+    dec a
+    cp $1b
+    jr nz, ok
+    ld (hl), $25 
+    dec hl
+    jr decimal
+ok:  
+    ld (hl), a
+    ld bc, (speed) ; book has no brackets??
+delay:
+    dec bc
+    ld a, b
+    or c
+    jr nz, delay
+    call kscan
+    ld a, l
+    cpl
+    ld l, a
+    and $81
+    jr z, notdown
+    ld de, $000c
+    jr chkmove
+notdown:    
+    ld a, l
+    and $18
+    jr z, notup
+    ld de,$fff4
+    jr chkmove
+notup:
+    ld a, l
+    and $60
+    jr z, notright
+    ld de, $0001
+    jr chkmove
+notright:
+    ld a,l
+    and $06
+    jr z, loop
+    ld de, $FFFF
+chkmove:
+    ld hl, (lastmove)
+    ld a,l 
+    or h 
+    jr z, move
+    add hl, de
+    ld a, l 
+    or h
+    jr z, move
+    jr loop
+move:    
+    ld hl, (position)
+    ld a, (hl)
+    and $80
+    ld (hl), a
+    add hl, de
+    ld a, (hl)
+    or $15
+    ld (hl), a
+    ld (position), hl
+    ld hl, $0000
+    rla
+    jr nc, nohit
+    ld h, d
+    ld l, e    
+nohit:
+    ld (lastmove), hl
+    ld hl, (D_FILE)
+    ld de, $0036
+    add hl, de
+    ld de, (position)
+    sbc hl, de
+    ret z
+    jp loop
     
-boardDef:
-    DEFB $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$76
-    DEFB $80,$15,$80,$00,$00,$00,$00,$00,$00,$00,$80,$76
-    DEFB $80,$00,$80,$00,$80,$80,$80,$80,$80,$00,$80,$76
-    DEFB $80,$00,$80,$00,$80,$00,$00,$00,$80,$00,$80,$76
-    DEFB $80,$00,$80,$00,$80,$00,$80,$00,$80,$00,$80,$76
-    DEFB $80,$00,$80,$00,$80,$80,$80,$00,$80,$00,$80,$76
-    DEFB $80,$00,$80,$00,$00,$00,$00,$00,$80,$00,$80,$76
-    DEFB $80,$00,$80,$80,$80,$80,$80,$80,$80,$00,$80,$76
-    DEFB $80,$00,$00,$00,$00,$00,$00,$00,$00,$00,$80,$76
-    DEFB $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$76
-    DEFB $76
-    DEFB $3e,$34,$3a,$37,$00,$38,$28,$34,$37,$2a,$00,$33
-    DEFB $34,$3c,$00,$25,$25,$25,$1c,$1c,$ff
-	
-    ret  ;;; never gets here
-
-    
+    ret ; never gets here
 debugPrintRegisters
     ; take copy of all the registers
     push hl
@@ -208,6 +286,27 @@ kscanloop:
     rl h
     ret
 
+position:
+    DEFW $0000
+lastmove:
+    DEFW $0000
+speed:
+    DEFW $4000
+
+boardDef:
+    DEFB $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$76
+    DEFB $80,$15,$80,$00,$00,$00,$00,$00,$00,$00,$80,$76
+    DEFB $80,$00,$80,$00,$80,$80,$80,$80,$80,$00,$80,$76
+    DEFB $80,$00,$80,$00,$80,$00,$00,$00,$80,$00,$80,$76
+    DEFB $80,$00,$80,$00,$80,$00,$80,$00,$80,$00,$80,$76
+    DEFB $80,$00,$80,$00,$80,$80,$80,$00,$80,$00,$80,$76
+    DEFB $80,$00,$80,$00,$00,$00,$00,$00,$80,$00,$80,$76
+    DEFB $80,$00,$80,$80,$80,$80,$80,$80,$80,$00,$80,$76
+    DEFB $80,$00,$00,$00,$00,$00,$00,$00,$00,$00,$80,$76
+    DEFB $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$76
+    DEFB $76
+    DEFB _Y,_O,_U,_R,0,_S,_C,_O,_R,_E,0,_N,_O,_W,
+    DEFB 0,$25,$25,$25,$1c,$1c,$ff
     
     
 #include "line2.asm"

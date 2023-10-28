@@ -1260,5 +1260,5 @@ foodCount
     DEFB 0    
    
 #include "line2.asm"
-#include "screenFull.asm"      			; definition of the screen memory, in colapsed version for 1K         
+#include "screenFull.asm"      			; definition of the screen memory       
 #include "endbasic.asm"

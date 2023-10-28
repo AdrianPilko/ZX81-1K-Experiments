@@ -18,12 +18,13 @@
 ;;      - sometimes, especially when hitting the upper right wall the ball disappera off into oblivion
 ;;        and the game craches
 ;;      - sometime when the ball is lost in bottom left of screen no restart happens
+;;      - seen once - ball went through bat!
 ;; todo
 ;;      - would be better for the bat to impart "spin" on ball to prevent "checkerboard" effect
 ;;        The book code handles this by addin one to ballinit after each life lost
 ;;      - would be nice to have a high score
 
-
+;#define DEBUG_MOVEBALL_EVERYTIME
 ;#define DEBUG_PRINT
 ;#define DEBUG_START_BALL_TOP
 ;#define DEBUG_SLOW
@@ -122,7 +123,7 @@ base:
 #endif    
     daa
     ld (lives), a   
-    ld c, 7
+    ld c, 6
     ld b, 0        
     call PRINTAT
     ld a, (lives)
@@ -131,6 +132,11 @@ base:
     ld bc,0
 	ld de,top_row_text_lives
 	call printstring	    
+    
+    ld bc,9
+	ld de,top_row_text_high_score    
+	call printstring	       
+    
     ld bc,22
 	ld de,top_row_text_score
 	call printstring	   
@@ -145,11 +151,11 @@ restart:
     jp z, gameover   ; do full restart (ie game over
     daa
     ld (lives), a
-    ld c, 7
+    ld c, 6
     ld b, 0        
     call PRINTAT
     ld a, (lives)
-    call hprint       
+    call hprintInverse
     
 first_time:    
 
@@ -207,9 +213,13 @@ delay:
     ld a, h
     or l
     jr nz, delay
-    inc b
+#ifdef DEBUG_MOVEBALL_EVERYTIME
+    ;; move ball every time!
+#else
+    inc b    
     bit $00, b            ; only move ball every other time
     jp nz, movebat
+#endif    
 moveball:
     ld hl, (ballpos)
     ld (hl), $00
@@ -226,11 +236,11 @@ moveball:
 dontmove:
     or c
     jp z, movebat
-    push hl    
+    ;push hl    
 
     ld a, c
 #ifdef DEBUG_PRINT        
-    ;call debugPrintRegisters
+    call debugPrintRegisters
 #endif        
     cp $80                  ; check if the next position is a the wall
     jp nz, checkIfNextIsBat
@@ -253,7 +263,7 @@ dontmove:
     ; Now, compare the low bytes (least significant bytes)
     ld a, l    ; load the low byte of hl into the accumulator
 #ifdef DEBUG_PRINT    
-    ;call debugPrintRegisters
+    call debugPrintRegisters
 #endif        
     sub e      ; subtract the low byte of de from the accumulator
     jr z, notTopWall  ; jump if no carry (hl >= de)
@@ -281,14 +291,14 @@ checkIfNextIsBat:
 checkIfNextIsBrick:
     ld a, c
 #ifdef DEBUG_PRINT    
-    ;call debugPrintRegisters
+    call debugPrintRegisters
 #endif
     
     cp $08                  ; check if the next position is a the bat    
     jp nz, skipChangeDirection    
     
 #ifdef DEBUG_PRINT    
-    ;call debugPrintRegisters
+    call debugPrintRegisters
 #endif    
     jp checkDirectionChanges
     
@@ -436,7 +446,7 @@ skipChangeDirection:
     ld (batHitFlag), a
     
     ld (direction), hl; 
-    pop hl
+    ;pop hl
     
     ld a, c
     cp $08                  ; if the contents of the square is not a brick
@@ -444,8 +454,10 @@ skipChangeDirection:
                             
     jp nz, moveball
 
+;; the score is stored and calculated in a clever way using the actual screen memory as the "variable"/digits
+;; however this makes adding a high score more difficult
     ld hl, (D_FILE)    ; increase score       
-    ld de, $001f    ; position of score in boarder?
+    ld de, $001f       ; position 0 to 9 part of score in boarder
     add hl, de
 carry:
     ld a, (hl)
@@ -453,6 +465,12 @@ carry:
     jr nz, digit
     ld a, $9c
 digit:
+    push af                 
+    ld a, (copyOfScore) ;; added to get a score we can manipulate in normal numerical terms and create a high score from later
+    inc a
+    ld (copyOfScore), a
+    pop af
+    
     inc a
     cp $a6
     jr nz, increased
@@ -463,7 +481,7 @@ increased:
     ld (hl), a           
         
     push bc
-    ld c, 7
+    ld c, 6
     ld b, 0        
     call PRINTAT
     ld a, (lives)
@@ -729,16 +747,23 @@ batHitFlag
     DEFB $00
 topRow    
     DEFW $0000
+copyOfScore
+    DEFW $0000   
 lives   
     DEFB $00
 top_row_text_lives
 	DEFB	_L+128,_I+128,_V+128,_E+128,_S+128,$ff   ; the +128 makes it inverse video
 top_row_text_score
 	DEFB	_S+128,_C+128,_O+128,_R+128,_E+128,$ff  ; the +128 makes it inverse video
+top_row_text_high_score
+	DEFB	_H+128,_I+128,_G+128,_H+128,128,_S+128,_C+128,$ff   ; the +128 makes it inverse video
+    
 game_over_text
     DEFB	_G+128,_A+128,_M+128,_E+128,128,_O+128, _V+128,_E+128,_R+128,$ff  ; the +128 makes it inverse video
 game_over_blank_text
     DEFB	0,0,0,0,0,0,0,0,0,$ff  ; black blocks 
+oneBytePaddingForAlignment    
+    DEFB $00    
 
 #include "line2.asm"
 #include "screenFull.asm" 

@@ -2,6 +2,8 @@
 ;;; zx81 16K code by Adrian Pilkington (orginally 2022) updated later as well!
 ;;; It's a clone of snake (in case that wasn't clear from filename;)
 ;;;;;;;;;;;;;;;;;;;;;
+;; see demo video at https://youtu.be/k7EiBF07xOs?si=e3_hom0M1qUv2a9q
+;; download free from itch.io https://adrianpilko.itch.io/zx81-snake-game
 
 ; KNOWN BUGS /  FEATURES;       
 ;       1) when the snake gets longer than about 70 (unsure exact number) after game over the

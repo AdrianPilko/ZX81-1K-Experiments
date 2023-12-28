@@ -1,8 +1,9 @@
 ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
 ;;; Breakout game from the book Mastering Machine code on your zx81 1981 - by Toni Baker
 ;;; typed in here from the assembly, rather than machine code directly on ZX81 would have used HEXLD3.
 ;;; 
-;;; Typed in and ammended by AdrianPilko(ByteForever) October 2023
+;;; Typed in and ammended by AdrianPilko(ByteForever) December 2023
 ;;; The code heavily!! dependant on the definition of the screen memory in screen.asm
 ;;;;;;;;;;;;;;;;;;;;;
 
@@ -13,19 +14,19 @@
 ;;      - added "lives" count down
 ;;      - added more blocks to remove
 ;;      - added game over message and full restart when lives reach zero 
-;;
+;;      - added "spin" to ball if bat was moving - this enables a certain amount of random
+;;        which prevents the comon problem with breakout where it gets into a stable state and
+;;        no more bricks can be removed
 ;; known bugs
-;;      - sometimes, especially when hitting the upper right wall the ball disappera off into oblivion
-;;        and the game craches
 ;;      - sometime when the ball is lost in bottom left of screen no restart happens
-;;      - seen once - ball went through bat!
+;;      - seen a few times - ball went through bat when bat was moving continuously before hit!
 ;; todo
-;;      - would be better for the bat to impart "spin" on ball to prevent "checkerboard" effect
-;;        The book code handles this by addin one to ballinit after each life lost
 ;;      - would be nice to have a high score
 
 ;#define DEBUG_MOVEBALL_EVERYTIME
 ;#define DEBUG_PRINT
+;#define DEBUG_PRINT_DEBUG_MESSAGE
+;#define DEBUG_PRINT_SPIN_MESSAGE
 ;#define DEBUG_START_BALL_TOP
 ;#define DEBUG_SLOW
 ;#define LIVES_1
@@ -36,7 +37,7 @@
 #include "charcodes.asm"
 #include "zx81sys.asm"
 #include "line1.asm"
-
+  
 breakout:
     ld hl,(D_FILE)
     ld de,$0085 
@@ -97,13 +98,13 @@ base:
     ld de, $fefc   ;; this only works because of the last value of hl from previous loop
 #ifdef DEBUG_START_BALL_TOP        
     ;ld de, $4a   ; for debug put it above top to test bounce3 of top wall
-    ld de, $44   ; for debug put it above top to test bounce3 of top wall
+    ld de, $66   ; for debug put it above top to test bounce3 of top wall
     ld hl, (D_FILE) ; for debug put it above top to test bounce3 of top wall
 #endif    
     add hl, de
     ld (ballinit), hl
 #ifdef DEBUG_SLOW
-    ld hl, $1f00       ;; the delay loops for debug slower
+    ld hl, $ff00       ;; the delay loops for debug slower
 #else    
     ;ld hl, $03f0       ;; the delay loops
     ld hl, $04f0
@@ -111,7 +112,8 @@ base:
     ld (speed), hl
     
     ld hl, (D_FILE)
-    ld de, $1e
+    inc hl
+    ld de, 98
     
     add hl, de
     ld (topRow), hl
@@ -240,7 +242,7 @@ dontmove:
 
     ld a, c
 #ifdef DEBUG_PRINT        
-    call debugPrintRegisters
+    ;call debugPrintRegisters
 #endif        
     cp $80                  ; check if the next position is a the wall
     jp nz, checkIfNextIsBat
@@ -252,31 +254,31 @@ dontmove:
     call debugPrintRegisters
 #endif
 
-    ld a, h    ; Load the high byte of HL into the accumulator
-#ifdef DEBUG_PRINT    
-    ;call debugPrintRegisters
-#endif    
-    sub d      ; Subtract the high byte of DE from the accumulator
-    jr nz, notTopWall  ; Jump if no carry (HL >= DE)
-
-    ; If there was a carry, the high byte of HL is less than DE
-    ; Now, compare the low bytes (least significant bytes)
-    ld a, l    ; load the low byte of hl into the accumulator
-#ifdef DEBUG_PRINT    
-    call debugPrintRegisters
-#endif        
-    sub e      ; subtract the low byte of de from the accumulator
-    jr z, notTopWall  ; jump if no carry (hl >= de)
-
-less_than:
-    ; Your code to handle the case where HL is less than DE        
-    ld a, $01    
-    ld (topWallFlag), a
-    jp checkDirectionChanges  
-notTopWall:    
-    ld a, $01
+    sbc hl, de
+    jr c, isTopWall ; jump to 'action_x' if carry flag is set (hl < de)
+   
+    jp isSideWall
+    
+isSideWall:
+    ld a, 1
     ld (wallFlag), a
+    xor a
+    ld (topWallFlag), a  
+#ifdef DEBUG_PRINT_DEBUG_MESSAGE    
+    call debugPrintWasSide
+#endif    
     jp checkDirectionChanges
+isTopWall:    
+    xor a
+    ld (wallFlag), a
+    ld a, 1 
+    ld (topWallFlag), a  
+#ifdef DEBUG_PRINT_DEBUG_MESSAGE
+    call debugPrintWasTop
+#endif    
+
+    jp checkDirectionChanges  
+
 
     
 checkIfNextIsBat:    
@@ -286,20 +288,52 @@ checkIfNextIsBat:
 
     ld a, 1
     ld (batHitFlag), a
+
+#ifdef DEBUG_PRINT_DEBUG_MESSAGE    
+    call debugPrintWasBat
+#endif    
+
+    ; check if bat moved last time, if so add spin
+    ld a, (batMoved)
+    cp 2
+    jp z, spinLeft
+    cp 1
+    jp z, spinRight
+#ifdef DEBUG_PRINT_SPIN_MESSAGE    
+    call debugPrintNoSpin    
+#endif DEBUG_PRINT_SPIN_MESSAGE        
+    jp checkDirectionChanges    
+    
+spinLeft:    
+    ld hl, (ballpos)
+    dec hl
+    ld (ballpos), hl
+    
+#ifdef DEBUG_PRINT_SPIN_MESSAGE    
+    call debugPrintWasSpinLeft
+#endif DEBUG_PRINT_SPIN_MESSAGE            
+    jp checkDirectionChanges
+
+spinRight:
+    ld hl, (ballpos)
+    inc hl
+    ld (ballpos), hl        
+#ifdef DEBUG_PRINT_SPIN_MESSAGE    
+    call debugPrintWasSpinRight    
+#endif DEBUG_PRINT_SPIN_MESSAGE                
     jp checkDirectionChanges
     
 checkIfNextIsBrick:
     ld a, c
-#ifdef DEBUG_PRINT    
-    call debugPrintRegisters
-#endif
-    
-    cp $08                  ; check if the next position is a the bat    
+    cp $08                  ; check if the next position is brick
     jp nz, skipChangeDirection    
-    
-#ifdef DEBUG_PRINT    
-    call debugPrintRegisters
-#endif    
+
+#ifdef DEBUG_PRINT_DEBUG_MESSAGE    
+    call debugPrintWasBrick
+#endif        
+    ld a, 0
+    ld (batMoved), a
+
     jp checkDirectionChanges
     
 ;;; code to reverse directions (warning is a bit verbose!)
@@ -498,6 +532,8 @@ movebat:
     push af
     and $0f
     jr z, notleft
+    ld a, 2 
+    ld (batMoved), a
     ld hl, (batpos)
     dec hl
     dec hl
@@ -518,6 +554,8 @@ notleft:
     and $f0
     jr z, cycle2
     ld hl, (batpos)
+    ld a, 1
+    ld (batMoved), a    
     inc hl
     inc hl
     inc hl
@@ -564,7 +602,7 @@ gameOverInnerDelay:
     
     jp breakout
         
-    
+    ;; prints a:hl:de:bc:topRow::ballpos
     
 debugPrintRegisters
     ; take copy of all the registers
@@ -639,6 +677,141 @@ debugPrintRegisters
     pop hl
     
     ret
+
+debugPrintWasSide
+    ; take copy of all the registers
+    push hl
+    push de
+    push af    
+    push bc
+    
+    ld bc,760
+	ld de,debug_side_text
+	call printstring	    
+    
+    ;restore registers (in correct reverse order!)        
+    pop bc
+    pop af
+    pop de
+    pop hl
+    
+    ret
+    
+debugPrintWasTop
+    ; take copy of all the registers
+    push hl
+    push de
+    push af    
+    push bc
+    
+    ld bc,760
+	ld de,debug_top_text
+	call printstring	    
+    
+    ;restore registers (in correct reverse order!)        
+    pop bc
+    pop af
+    pop de
+    pop hl
+    
+    ret
+    
+debugPrintWasBat    
+    ; take copy of all the registers
+    push hl
+    push de
+    push af    
+    push bc
+    
+    ld bc,760
+	ld de,debug_bat_text
+	call printstring	    
+    
+    ;restore registers (in correct reverse order!)        
+    pop bc
+    pop af
+    pop de
+    pop hl
+    
+    ret    
+
+debugPrintWasBrick
+    ; take copy of all the registers
+    push hl
+    push de
+    push af    
+    push bc
+    
+    ld bc,760
+	ld de,debug_brick_text
+	call printstring	    
+    
+    ;restore registers (in correct reverse order!)        
+    pop bc
+    pop af
+    pop de
+    pop hl
+    
+    ret    
+    
+debugPrintWasSpinLeft
+    ; take copy of all the registers
+    push hl
+    push de
+    push af    
+    push bc
+    
+    ld bc,760
+	ld de,debug_ball_spin_lefttext
+	call printstring	    
+    
+    ;restore registers (in correct reverse order!)        
+    pop bc
+    pop af
+    pop de
+    pop hl
+    
+    ret    
+    
+debugPrintWasSpinRight
+    ; take copy of all the registers
+    push hl
+    push de
+    push af    
+    push bc
+    
+    ld bc,760
+	ld de,debug_ball_spin_righttext
+	call printstring	    
+    
+    ;restore registers (in correct reverse order!)        
+    pop bc
+    pop af
+    pop de
+    pop hl
+    
+    ret    
+    
+debugPrintNoSpin    
+    ; take copy of all the registers
+    push hl
+    push de
+    push af    
+    push bc
+    
+    ld bc,760
+	ld de,debug_no_spin_text
+	call printstring	    
+    
+    ;restore registers (in correct reverse order!)        
+    pop bc
+    pop af
+    pop de
+    pop hl
+    
+    ret        
+
+
     
 hprint 		;;http://swensont.epizy.com/ZX81Assembly.pdf?i=1
 	push af ;store the original value of a for later
@@ -757,14 +930,29 @@ top_row_text_score
 	DEFB	_S+128,_C+128,_O+128,_R+128,_E+128,$ff  ; the +128 makes it inverse video
 top_row_text_high_score
 	DEFB	_H+128,_I+128,_G+128,_H+128,128,_S+128,_C+128,$ff   ; the +128 makes it inverse video
-    
+
+debug_side_text
+    DEFB   _W,_A,_S,0,_S,_I,_D,_E,0,_W,_A,_L,_L,$ff
+debug_top_text
+    DEFB   _W,_A,_S,0,_T,_O,_P,0,_W,_A,_L,_L,0,0,$ff
+debug_bat_text
+    DEFB   _W,_A,_S,0,_B,_A,_T,0,0,0,0,0,0,0,$ff
+debug_brick_text
+    DEFB   _W,_A,_S,0,_B,_R,_I,_C,_K,0,0,0,0,0,$ff    
+debug_ball_spin_lefttext
+    DEFB   _S,_P,_I,_N,0,_L,_E,_F,_T,0,0,$ff        
+debug_ball_spin_righttext
+    DEFB   _S,_P,_I,_N,0,_R,_I,_G,_H,_T,$ff            
+debug_no_spin_text
+    DEFB   0,0,0,0,0,0,0,0,0,0,0,0,$ff            
 game_over_text
     DEFB	_G+128,_A+128,_M+128,_E+128,128,_O+128, _V+128,_E+128,_R+128,$ff  ; the +128 makes it inverse video
 game_over_blank_text
     DEFB	0,0,0,0,0,0,0,0,0,$ff  ; black blocks 
 oneBytePaddingForAlignment    
     DEFB $00    
-
+batMoved
+    DEFB $00
 #include "line2.asm"
 #include "screenFull.asm" 
 ;;; ball "directions", used to add or subract ball position to move diagonally down left or right (tablestartlow) then up left right - these are offsets which with the code to moveball causes the ball to move in screen memory

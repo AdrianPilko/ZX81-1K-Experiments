@@ -30,14 +30,126 @@
 ;#define DEBUG_START_BALL_TOP
 ;#define DEBUG_SLOW
 ;#define LIVES_1
+CLS EQU $0A2A
+PRINTAT EQU $08f5
+PRINT EQU $10
 
 ; all the includes came from  https://www.sinclairzxworld.com/viewtopic.php?t=2186&start=40
-#include "zx81defs.asm" 
-#include "zx81rom.asm"
-#include "charcodes.asm"
-#include "zx81sys.asm"
-#include "line1.asm"
-  
+; character set definition/helpers
+__:				EQU	$00	;spacja
+_QT:			EQU	$0B	;"
+_PD:			EQU	$0C	;funt
+_SD:			EQU	$0D	;$
+_CL:			EQU	$0E	;:
+_QM:			EQU	$0F	;?
+_OP:			EQU	$10	;(
+_CP:			EQU	$11	;)
+_GT:			EQU	$12	;>
+_LT:			EQU	$13	;<
+_EQ:			EQU	$14	;=
+_PL:			EQU	$15	;+
+_MI:			EQU	$16	;-
+_AS:			EQU	$17	;*
+_SL:			EQU	$18	;/
+_SC:			EQU	$19	;;
+_CM:			EQU	$1A	;,
+_DT:			EQU	$1B	;.
+_NL:			EQU	$76	;NEWLINE
+
+_BL             EQU $80; solid block
+
+_0				EQU $1C
+_1				EQU $1D
+_2				EQU $1E
+_3				EQU $1F
+_4				EQU $20
+_5				EQU $21
+_6				EQU $22
+_7				EQU $23
+_8				EQU $24
+_9				EQU $25
+_A				EQU $26
+_B				EQU $27
+_C				EQU $28
+_D				EQU $29
+_E				EQU $2A
+_F				EQU $2B
+_G				EQU $2C
+_H				EQU $2D
+_I				EQU $2E
+_J				EQU $2F
+_K				EQU $30
+_L				EQU $31
+_M				EQU $32
+_N				EQU $33
+_O				EQU $34
+_P				EQU $35
+_Q				EQU $36
+_R				EQU $37
+_S				EQU $38
+_T				EQU $39
+_U				EQU $3A
+_V				EQU $3B
+_W				EQU $3C
+_X				EQU $3D
+_Y				EQU $3E
+_Z				EQU $3F
+
+
+;;;; this is the whole ZX81 runtime system and gets assembled and
+;;;; loads as it would if we just powered/booted into basic
+
+           ORG  $4009             ; assemble to this address
+
+VERSN
+    DB 0
+E_PPC:
+    DW 2
+D_FILE:
+    DW Display
+DF_CC:
+    DW Display+1                  ; First character of display
+VARS:
+    DW Variables
+DEST:           DW 0
+E_LINE:         DW BasicEnd
+CH_ADD:         DW BasicEnd+4                 ; Simulate SAVE "X"
+X_PTR:          DW 0
+STKBOT:         DW BasicEnd+5
+STKEND:         DW BasicEnd+5                 ; Empty stack
+BREG:           DB 0
+MEM:            DW MEMBOT
+UNUSED1:        DB 0
+DF_SZ:          DB 2
+S_TOP:          DW $0002                      ; Top program line number
+LAST_K:         DW $fdbf
+DEBOUN:         DB 15
+MARGIN:         DB 55
+NXTLIN:         DW Line2                      ; Next line address
+OLDPPC:         DW 0
+FLAGX:          DB 0
+STRLEN:         DW 0
+T_ADDR:         DW $0c8d
+SEED:           DW 0
+FRAMES:         DW $f5a3
+COORDS:         DW 0
+PR_CC:          DB $bc
+S_POSN:         DW $1821
+CDFLAG:         DB $40
+MEMBOT:         DB 0,0 ;  zeros
+UNUNSED2:       DW 0
+
+            ORG 16509       ;; we have to push the place in memory for this here becuase basic has
+                    ;; to start at 16514 if memory was tight we could use the space between UNUSED2
+                    ;; and Line1 for variables
+
+Line1:          DB $00,$0a                    ; Line 10
+                DW Line1End-Line1Text         ; Line 10 length
+Line1Text:      DB $ea                        ; REM
+
+
+
+
 breakout:
     ld hl,(D_FILE)
     ld de,$0085 
@@ -96,19 +208,19 @@ base:
     djnz base
       
     ld de, $fefc   ;; this only works because of the last value of hl from previous loop
-#ifdef DEBUG_START_BALL_TOP        
-    ;ld de, $4a   ; for debug put it above top to test bounce3 of top wall
-    ld de, $66   ; for debug put it above top to test bounce3 of top wall
-    ld hl, (D_FILE) ; for debug put it above top to test bounce3 of top wall
-#endif    
+;#ifdef DEBUG_START_BALL_TOP        
+;    ;ld de, $4a   ; for debug put it above top to test bounce3 of top wall
+;    ld de, $66   ; for debug put it above top to test bounce3 of top wall
+;    ld hl, (D_FILE) ; for debug put it above top to test bounce3 of top wall
+;#endif    
     add hl, de
     ld (ballinit), hl
-#ifdef DEBUG_SLOW
-    ld hl, $ff00       ;; the delay loops for debug slower
-#else    
+;#ifdef DEBUG_SLOW
+;    ld hl, $ff00       ;; the delay loops for debug slower
+;#else    
     ;ld hl, $03f0       ;; the delay loops
     ld hl, $04f0
-#endif
+;#endif
     ld (speed), hl
     
     ld hl, (D_FILE)
@@ -118,11 +230,11 @@ base:
     add hl, de
     ld (topRow), hl
     
-#ifdef LIVES_1   ; to test for end of game
-    ld a, $01
-#else    
+;#ifdef LIVES_1   ; to test for end of game
+;    ld a, $01
+;#else    
     ld a, $03    ; 3 lines bit mean but hey it's not meant to be easy, right ?? :)
-#endif    
+;#endif    
     daa
     ld (lives), a   
     ld c, 6
@@ -181,11 +293,11 @@ first_time:
     ret z
     ld (speed), a
     ld hl, (D_FILE)
-#ifdef DEBUG_PRINT    
-    ld de,  $0296
-#else    
+;#ifdef DEBUG_PRINT    
+;    ld de,  $0296
+;#else    
     ld de,  $02b7   ;; to allow for debug print raise by one line
-#endif
+;#endif
     add hl, de
     ld (hl),$00
     ld a, $03
@@ -215,13 +327,13 @@ delay:
     ld a, h
     or l
     jr nz, delay
-#ifdef DEBUG_MOVEBALL_EVERYTIME
+;#ifdef DEBUG_MOVEBALL_EVERYTIME
     ;; move ball every time!
-#else
+;#else
     inc b    
     bit $00, b            ; only move ball every other time
     jp nz, movebat
-#endif    
+;#endif    
 moveball:
     ld hl, (ballpos)
     ld (hl), $00
@@ -241,18 +353,18 @@ dontmove:
     ;push hl    
 
     ld a, c
-#ifdef DEBUG_PRINT        
+;#ifdef DEBUG_PRINT        
     ;call debugPrintRegisters
-#endif        
+;#endif        
     cp $80                  ; check if the next position is a the wall
     jp nz, checkIfNextIsBat
     
     ;; check if this is the "top wall"
     ld hl,(ballpos)  ; Load the first 16-bit value into HL
     ld de,(topRow)  ; Load the second 16-bit value into DE
-#ifdef DEBUG_PRINT    
-    call debugPrintRegisters
-#endif
+;#ifdef DEBUG_PRINT    
+ ;   call debugPrintRegisters
+;#endif
 
     sbc hl, de
     jr c, isTopWall ; jump to 'action_x' if carry flag is set (hl < de)
@@ -264,18 +376,18 @@ isSideWall:
     ld (wallFlag), a
     xor a
     ld (topWallFlag), a  
-#ifdef DEBUG_PRINT_DEBUG_MESSAGE    
-    call debugPrintWasSide
-#endif    
+;#ifdef DEBUG_PRINT_DEBUG_MESSAGE    
+;    call debugPrintWasSide
+;#endif    
     jp checkDirectionChanges
 isTopWall:    
     xor a
     ld (wallFlag), a
     ld a, 1 
     ld (topWallFlag), a  
-#ifdef DEBUG_PRINT_DEBUG_MESSAGE
-    call debugPrintWasTop
-#endif    
+;#ifdef DEBUG_PRINT_DEBUG_MESSAGE
+;    call debugPrintWasTop
+;#endif    
 
     jp checkDirectionChanges  
 
@@ -289,9 +401,9 @@ checkIfNextIsBat:
     ld a, 1
     ld (batHitFlag), a
 
-#ifdef DEBUG_PRINT_DEBUG_MESSAGE    
-    call debugPrintWasBat
-#endif    
+;#ifdef DEBUG_PRINT_DEBUG_MESSAGE    
+;    call debugPrintWasBat
+;#endif    
 
     ; check if bat moved last time, if so add spin
     ld a, (batMoved)
@@ -299,9 +411,9 @@ checkIfNextIsBat:
     jp z, spinLeft
     cp 1
     jp z, spinRight
-#ifdef DEBUG_PRINT_SPIN_MESSAGE    
-    call debugPrintNoSpin    
-#endif DEBUG_PRINT_SPIN_MESSAGE        
+;#ifdef DEBUG_PRINT_SPIN_MESSAGE    
+;    call debugPrintNoSpin    
+;#endif DEBUG_PRINT_SPIN_MESSAGE        
     jp checkDirectionChanges    
     
 spinLeft:    
@@ -309,18 +421,18 @@ spinLeft:
     dec hl
     ld (ballpos), hl
     
-#ifdef DEBUG_PRINT_SPIN_MESSAGE    
-    call debugPrintWasSpinLeft
-#endif DEBUG_PRINT_SPIN_MESSAGE            
+;#ifdef DEBUG_PRINT_SPIN_MESSAGE    
+;    call debugPrintWasSpinLeft
+;#endif DEBUG_PRINT_SPIN_MESSAGE            
     jp checkDirectionChanges
 
 spinRight:
     ld hl, (ballpos)
     inc hl
     ld (ballpos), hl        
-#ifdef DEBUG_PRINT_SPIN_MESSAGE    
-    call debugPrintWasSpinRight    
-#endif DEBUG_PRINT_SPIN_MESSAGE                
+;#ifdef DEBUG_PRINT_SPIN_MESSAGE    
+;    call debugPrintWasSpinRight    
+;#endif DEBUG_PRINT_SPIN_MESSAGE                
     jp checkDirectionChanges
     
 checkIfNextIsBrick:
@@ -328,9 +440,9 @@ checkIfNextIsBrick:
     cp $08                  ; check if the next position is brick
     jp nz, skipChangeDirection    
 
-#ifdef DEBUG_PRINT_DEBUG_MESSAGE    
-    call debugPrintWasBrick
-#endif        
+;#ifdef DEBUG_PRINT_DEBUG_MESSAGE    
+;    call debugPrintWasBrick
+;#endif        
     ld a, 0
     ld (batMoved), a
 
@@ -885,6 +997,63 @@ kscanloop:
     rl h
     ret
     
+;INCLUDE commonUtils.asm
+
+                DB $76                        ; Newline
+Line1End
+Line2			DB $00,$14
+                DW Line2End-Line2Text
+Line2Text     	DB $F9,$D4                    ; RAND USR
+				DB $1D,$22,$21,$1D,$20        ; 16514
+                DB $7E                        ; Number
+                DB $8F,$01,$04,$00,$00        ; Numeric encoding
+                DB $76                        ; Newline
+Line2End
+endBasic
+
+Display        	DB $76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, _P, _R, _E, _S, _S, 0, _S,0, _T, _O, 0, _S, _T, _A, _R, _T, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+
+Variables
+
+genCol
+    DB 0
+genRow
+    DB 0
+mazeVisitedLocations
+    DS 32*21, 0
+mazeScreenBuffer
+    DS 32*21, 8
+randomSeed
+    DW 0
+testSring
+    DB _H,_E,_L,_L,_O,_CM,__,_W,_O,_R,_L,_D,$ff
+MAZE_TEXT
+    DB _M,_A,_Z,_E,__,_G,_E,_N,_E,_R,_A,_T,_I,_O,_N,__,_B,_Y,_T,_E,_F,_O,_R,_E,_V,_E,_R,__,_V,_0,_DT,_2,$FF
+
 tablestart:
 dirTabDownLeft:
     DEFB $00   
@@ -953,7 +1122,8 @@ oneBytePaddingForAlignment
     DEFB $00    
 batMoved
     DEFB $00
-#include "line2.asm"
-#include "screenFull.asm" 
-;;; ball "directions", used to add or subract ball position to move diagonally down left or right (tablestartlow) then up left right - these are offsets which with the code to moveball causes the ball to move in screen memory
-#include "endbasic.asm"
+
+
+VariablesEnd:   DB $80
+BasicEnd:
+

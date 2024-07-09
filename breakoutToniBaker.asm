@@ -120,7 +120,7 @@ STKEND:         DW BasicEnd+5                 ; Empty stack
 BREG:           DB 0
 MEM:            DW MEMBOT
 UNUSED1:        DB 0
-DF_SZ:          DB 2
+DF_SZ:          DB 0                          ; this allows us to use full screen for PRINTAT and PRINT
 S_TOP:          DW $0002                      ; Top program line number
 LAST_K:         DW $fdbf
 DEBOUN:         DB 15
@@ -152,18 +152,18 @@ Line1Text:      DB $ea                        ; REM
 
 breakout:
     ld hl,(D_FILE)
-    ld de,$0085 
+    ld de,$0084   ; the offset from the start of display to write first block
     add hl,de
     ld bc,$8080   ; b is number of bricks, c is 128 (0x80) which is black square for sides and top boarder
 nxbrk:
-    inc hl
-    ld a,(hl)
-    cp $76
-    jr z, nxbrk
-    ld (hl), $08
-    djnz nxbrk
+    inc hl        ; inc hl here because D_FILE initially points to the $76 before first char, and better for loop
+    ld a,(hl)  
+    cp $76        ; check if we're at the end of line
+    jr z, nxbrk   ; if so increment on past one more, if not carry on to write grey block to screen  
+    ld (hl), $08  ; 8 is the grey block character
+    djnz nxbrk    ; loop for all blocks 
     ld bc,$8080   ; b is number of bricks, c is 128 (0x80) which is black square for sides and top boarder    
-nxbrk2:
+nxbrk2:           ; loop to output another 4 rows, since b would have had to be 128*2 
     inc hl
     ld a,(hl)
     cp $76
@@ -171,19 +171,19 @@ nxbrk2:
     ld (hl), $08
     djnz nxbrk2   
     ld hl, (D_FILE)  ; initialise the top part of boarder
-    ld b,$1e  
+    ld b,30          ; we're also setting score char (inverse zero) and last block so 30 2 less than full line
 nxbl:
     inc hl
-    ld (hl), c
+    ld (hl), c    ; c still contains the $80 =128 decimal character for black block
     djnz nxbl  
     inc hl    
     ld (hl), $9c      ; current score inverse video "0" character
     inc hl
     ld (hl), c
     ld hl, (D_FILE)  ; initialise the top part of boarder    
-    ld de, $22
+    ld de, $22       ; start of second row
     add hl, de    
-    ld b,$1f
+    ld b,31
 nxbl2:
     ld (hl), c
     inc hl
@@ -192,31 +192,36 @@ nxbl2:
     inc hl
     inc hl
     ld de,$001f
-    ld b, $17 
+    ld b, 20      ; only enough blocks on sides to fill all but last line, which gets set with $1b's
 sides:
     ld (hl), c
     add hl, de
     ld (hl), c
     inc hl
-    inc hl
+    inc hl   
     djnz sides
-    ld b, $20
-    inc hl
+    ld b, 32
+    ld de, -33
+    add hl, de
 base:
     ld (hl), $1b
     inc hl
     djnz base
-      
-    ld de, $fefc   ;; this only works because of the last value of hl from previous loop
+
 ;#ifdef DEBUG_START_BALL_TOP        
 ;    ;ld de, $4a   ; for debug put it above top to test bounce3 of top wall
-;    ld de, $66   ; for debug put it above top to test bounce3 of top wall
+    ;ld de, $67   ; for debug put it above top to test bounce3 of top wall
+    ;ld de, $65   ; for debug put it above top to test bounce3 of top wall
 ;    ld hl, (D_FILE) ; for debug put it above top to test bounce3 of top wall
-;#endif    
+;#endif
+    ld hl, (D_FILE) 
+    ld de, $215  
     add hl, de
     ld (ballinit), hl
+
+    
 ;#ifdef DEBUG_SLOW
-;    ld hl, $ff00       ;; the delay loops for debug slower
+   ; ld hl, $ff00       ;; the delay loops for debug slower
 ;#else    
     ;ld hl, $03f0       ;; the delay loops
     ld hl, $04f0
@@ -281,25 +286,21 @@ first_time:
     ld (hl), $34        ; print the ball
     ld hl, $ffe0        ; set initial direction
     ld (direction), hl
-    
+       
     xor a
     ld (wallFlag), a
     ld a, $01               ; default ball move up and to right
     ld (upFlag), a
     ld a, $01
     ld (rightFlag), a    
-    ld a, (speed)
-    dec a
-    ret z
-    ld (speed), a
     ld hl, (D_FILE)
 ;#ifdef DEBUG_PRINT    
-;    ld de,  $0296
+    ld de,  $0296    ;; to allow for debug print raise by one line
 ;#else    
-    ld de,  $02b7   ;; to allow for debug print raise by one line
+;    ld de,  $02b7   
 ;#endif
-    add hl, de
-    ld (hl),$00
+    add hl, de     ; draw the bat
+    ;ld (hl),$00
     ld a, $03
     inc hl
     ld (hl), a
@@ -313,11 +314,12 @@ first_time:
     inc hl
     ld (hl), a
     ld b, $18
+
 erase:    
     inc hl
     ld (hl), $00
     djnz erase
-    ld hl, $0000
+    ld hl, $0000         ; this cuases the delay on first starting game to be bigger - ie full 16bits worth
     jr delay
 
 loop:                    ; this is the main game loop
@@ -330,7 +332,7 @@ delay:
 ;#ifdef DEBUG_MOVEBALL_EVERYTIME
     ;; move ball every time!
 ;#else
-    inc b    
+    inc b                 ; god knows what b was set to before this !!
     bit $00, b            ; only move ball every other time
     jp nz, movebat
 ;#endif    
@@ -338,32 +340,78 @@ moveball:
     ld hl, (ballpos)
     ld (hl), $00
     ld de, (direction)    ; initital direction is stored as twos compliment so add is subtract 0xffe0 = 0xffff - 0xffe0 = 31 hence this will move ball diagonally to left up to right
+    
+   ; call debugPrintRegisters
+    
+    ld hl, (direction)   ;; covers that this could drop through with floating hl
+; right, validate direction, seen it getting corrupted
+    ld a, 0
+    cp h
+    jr z, potentialPosValid
+    ld a, $ff
+    cp h
+    jr z, potentialNegValid
+    jr notValidDirection
+potentialPosValid
+    ld a, $20
+    cp l
+    jr z, validDirection
+    ld a, $22
+    cp l
+    jr z, validDirection
+    jr notValidDirection
+potentialNegValid
+    ld a, $e0
+    cp l
+    jr z, validDirection
+    ld a, $de
+    cp l
+    jr z, validDirection
+
+notValidDirection
+    ld hl, (D_FILE)
+    ld de, 32
+    add hl, de
+    ld (hl), 8
+    ld a, (dirTabUpLeft)
+    ld h, a
+    ld a, (dirTabUpLeft+1)
+    ld l, a  
+    ld (direction), hl
+    ld hl, (ballpos)
+    ld (hl),128  ; assuming it's always (as it has been) the side blocks that are afftected here
+    
+validDirection
+    ld hl, (ballpos)
+    ld de, (direction)   ;; covers that this could drop through with floating hl
     add hl, de
     ld a, (hl)            ; check contents of next ball position
     cp $1b
     jp z, restart
     ld c, a
-    and $f7
+    and $f7  ;
     jr nz, dontmove
-    ld (hl), $34
-    ld (ballpos), hl        
+    ld (hl), $34          ; this is the character for the ball 'O'
+    ld (ballpos), hl      ; now set the ball potition variable       
 dontmove:
     or c
     jp z, movebat
     ;push hl    
 
     ld a, c
-;#ifdef DEBUG_PRINT        
+;#ifdef DEBUG_PRINT
+    ld hl,(ballpos)  ; Load the first 16-bit value into HL
+    ld de,(D_FILE)  ; Load the second 16-bit value into DE        
     ;call debugPrintRegisters
 ;#endif        
-    cp $80                  ; check if the next position is a the wall
+    cp 128                  ; check if the next position is a the wall
     jp nz, checkIfNextIsBat
     
     ;; check if this is the "top wall"
     ld hl,(ballpos)  ; Load the first 16-bit value into HL
     ld de,(topRow)  ; Load the second 16-bit value into DE
 ;#ifdef DEBUG_PRINT    
- ;   call debugPrintRegisters
+    ;call debugPrintRegisters
 ;#endif
 
     sbc hl, de
@@ -445,11 +493,11 @@ checkIfNextIsBrick:
 ;#endif        
     ld a, 0
     ld (batMoved), a
-
     jp checkDirectionChanges
     
 ;;; code to reverse directions (warning is a bit verbose!)
 checkDirectionChanges:
+    ld hl, (direction)
     ; if upFlag==1 & rightFlag==1 then switchDownRight
     ld a, (upFlag)  
     cp $01
@@ -514,7 +562,6 @@ checkif_switchUpLeft:
 
     jp switchUpLeft
     
-    
 switchUpLeft:
     ld a,  (batHitFlag)
     cp 1
@@ -522,6 +569,7 @@ switchUpLeft:
     ld hl,(ballpos)
     dec hl
     ld (ballpos), hl
+    ld hl, (direction)
 afterSpinLeft:      
 
     ld a, (dirTabUpLeft)
@@ -727,7 +775,7 @@ debugPrintRegisters
     ;set b to row, c to first col, which is the last row    
     ld b, 0     ; have seen strange thing when debug comes out and bug happens it drops one line
     ld c, 1
-    ld b, 21        
+    ld b, 22    ;; can only do this because we set $4000+$22 hex = 16418 DF_SZ the number of lines in lower part of screen     
     call PRINTAT
     pop bc
     pop af
@@ -1013,6 +1061,8 @@ endBasic
 
 Display        	DB $76
                 DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 0,$76
+                DB  0, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 0,$76
                 DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
                 DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
                 DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
@@ -1033,36 +1083,10 @@ Display        	DB $76
                 DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
                 DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
                 DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
-                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76
-                DB  0, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b,$76
-                DB  0, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b, $1b,$76
+                DB  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,$76                
 
 Variables
 
-mazeVisitedLocations
-    DS 128, $1b
-    DB $76
-tablestart:
-dirTabDownLeft:
-    DEFB $00   
-    DEFB $20         ;; 31 to move ball down and to left
-dirTabDownRight:    
-    DEFB $00
-    DEFB $22         ;; 33 to move ball down and to right
-dirTabUpRight:
-    DEFB $ff
-    DEFB $e0         ;; -31 when taken as twos compliment up and right
-dirTabUpLeft:    
-    DEFB $ff
-    DEFB $de         ;; -33 when taken as twos compliment up and left
-ballinit:
-    DEFW $0000         ;; these were just addresses in the machine code, here define a label
-speed:     
-    DEFW $0000         ;; these were just addresses in the machine code, here define a label
-ballpos:
-    DEFW $0000         ;; these were just addresses in the machine code, here define a label
-direction:
-    DEFW $0000         ;; these were just addresses in the machine code, here define a label
 batpos:    
     DEFW $0000         ;; these were just addresses in the machine code, here define a label
 upFlag:                 ;; if the ball is moving up == 1 else 0
@@ -1084,9 +1108,10 @@ lives
 top_row_text_lives
 	DEFB	_L+128,_I+128,_V+128,_E+128,_S+128,$ff   ; the +128 makes it inverse video
 top_row_text_score
-	DEFB	_S+128,_C+128,_O+128,_R+128,_E+128,$ff  ; the +128 makes it inverse video
+    DEFB $ff
+	;DEFB	_S+128,_C+128,_O+128,_R+128,_E+128,$ff  ; the +128 makes it inverse video
 top_row_text_high_score
-	DEFB	_H+128,_I+128,_G+128,_H+128,128,_S+128,_C+128,$ff   ; the +128 makes it inverse video
+	DEFB	_B+128,_R+128,_E+128,_A+128,_K+128,_O+128,_U+128,_T+128, _T,_O,_N,_I,__,_B,_A,_K,_E,_R,$ff   ; the +128 makes it inverse video
 
 debug_side_text
     DEFB   _W,_A,_S,0,_S,_I,_D,_E,0,_W,_A,_L,_L,$ff
@@ -1110,7 +1135,27 @@ oneBytePaddingForAlignment
     DEFB $00    
 batMoved
     DEFB $00
-
+tablestart:
+dirTabDownLeft:
+    DEFB $00   
+    DEFB $20         ;; 31 to move ball down and to left
+dirTabDownRight:    
+    DEFB $00
+    DEFB $22         ;; 33 to move ball down and to right
+dirTabUpRight:
+    DEFB $ff
+    DEFB $e0         ;; -31 when taken as twos compliment up and right
+dirTabUpLeft:    
+    DEFB $ff
+    DEFB $de         ;; -33 when taken as twos compliment up and left
+ballinit:
+    DEFW $0000         ;; these were just addresses in the machine code, here define a label
+speed:     
+    DEFW $0000         ;; these were just addresses in the machine code, here define a label
+ballpos:
+    DEFW $0000         ;; these were just addresses in the machine code, here define a label
+direction:
+    DEFW $0000         ;; these were just addresses in the machine code, here define a label
 
 VariablesEnd:   DB $80
 BasicEnd:

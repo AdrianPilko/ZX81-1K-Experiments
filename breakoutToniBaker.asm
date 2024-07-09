@@ -370,14 +370,42 @@ potentialNegValid
 
 notValidDirection
     ld hl, (D_FILE)
-    ld de, 32
+    inc hl
+    ld de, 726
     add hl, de
-    ld (hl), 8
+    ; no if this is left then the current ballpos will equal hl
+    ld de, (ballpos)
+    ld a, l
+    cp e
+    jp nz, changeDirUpLeft
+    ld a, h
+    cp d 
+    jr z, changeDirUpRight
+    jr changeDirUpLeft
+changeDirUpLeft
+    ; need to decide which side and hence that new direction will be
+    ;ld hl, (D_FILE) ;; this is just debug setting the top right block
+    ;ld de, 32
+    ;add hl, de
+    ;ld (hl), 8
+
     ld a, (dirTabUpLeft)
     ld h, a
     ld a, (dirTabUpLeft+1)
     ld l, a  
     ld (direction), hl
+    jp afterChangeUpRightLeft
+changeDirUpRight
+    ;ld hl, (D_FILE) ;; this is just debug setting the top right block
+    ;ld de, 32
+    ;add hl, de
+    ;ld (hl), 9
+    ld a, (dirTabUpRight)
+    ld h, a
+    ld a, (dirTabUpRight+1)
+    ld l, a  
+    ld (direction), hl
+afterChangeUpRightLeft
     ld hl, (ballpos)
     ld (hl),128  ; assuming it's always (as it has been) the side blocks that are afftected here
     

@@ -267,7 +267,6 @@ noShapeMove
     ld a, (shape_row)
     sub 2
     ld (shape_row),a
-
     call drawShape
     jp  preWaitloop
 
@@ -337,7 +336,6 @@ checkLoopSetup
     ld a, 1
     ld (lineCompleteFlag),a
     ld hl,dfile
-    inc hl
     ld a, (checkColOffsetStartRow)
     add a, 10
     ld (checkColOffsetStartRow), a    
@@ -515,6 +513,12 @@ printNumber_loop
     ret  
 
 drawShape  
+
+    ld hl, dfile
+    inc hl
+    inc hl
+    ld (hl), 8
+
     ld a,(deleteShapeFlag)     
     cp 1
     jp z, dontIncrementShapeRowIndex    ;; if we're deleting shape then skip increment shape_row_index
@@ -522,6 +526,16 @@ drawShape
     ld a, (shape_row_index)
     add a, 10                  ; always need ten as the offset, the left right just adds bit to this   
     ld (shape_row_index), a
+
+    
+    ld hl, dfile
+    inc hl
+    inc hl
+    inc hl
+    ld (hl), 9
+;debugHere2
+;    jp debugHere2
+
 
 dontIncrementShapeRowIndex
 

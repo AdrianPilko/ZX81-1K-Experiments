@@ -56,7 +56,8 @@ gamecode
 
 ; the display file, Code the lines needed.
 dfile    db 118
-         db "D"-27,"E"-27,"M"-27,"O"-27,118
+         db "D"-27,"E"-27,"M"-27,"O"-27,0,"D"-27,"R"-27
+         db $1b,"B"-27,"E"-27,"E"-27,"P"-27,118
 
 vars     db 128          ; becomes end of screen
 last     equ $

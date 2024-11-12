@@ -12,7 +12,7 @@
 ;   some shapes can move sideways into others,  incorrectly merging
 
 ;;;;;;;;;;;;;;;;;;
-;; current assembled size 1245 bytes!!!
+;; current assembled size 1326 bytes!!!
 ;;;;;;;;;;;;;;;;;;
 
 ; 12 bytes bytes from $4000 to $400b free reuable for own code
@@ -74,7 +74,7 @@ KEYBOARD_READ_PORT equ $FE
 SHAPE_CHAR_0  equ    128        ; black square
 SHAPE_CHAR_1  equ    136        ; grey square
 BOTTOM        equ    22         ; bottom row number
-VSYNCLOOP     equ    5          ; used for frame delay loop
+VSYNCLOOP     equ    6         ; used for frame delay loop
 
     
 ;; intro screen
@@ -83,6 +83,33 @@ intro_title
     ld b, BOTTOM
     ld a, 11    
     ld (initScreenIndex),a    
+    
+    ld hl, 0
+    xor a
+    ld (waitLoopDropFasterFlag), a
+    ld (shape_row_index), a     ; the current row of the top of the falling shape
+    ld (shape_col_index), a     ; the current column of the top left of the falling shape
+    ld (outerCount), hl 
+    ld (currentShapeOffset), hl    
+    ld (shapeTrackLeftRight), hl
+    ld (shape_row), a
+    ld (flagForBottomHit), a
+    ld (checkColOffsetStartRow), hl
+    ld (checkRowIndex), a
+    ld (checkColIndex), a
+    ld (lineCompleteFlag), a
+    ld (lineRemoved), hl
+    ld (lineToSuffleFrom), hl
+    ld (copyOfCheckColOffsetStartRow), hl
+    ld (rotationCount), a           ; zero means not rotated!    
+    ld (innerDrawLoopInit), a
+    ld (displayLineIncrement), hl
+    ld (displayOuterIncrement), hl    
+    ld (score_mem_hund), a  
+    ld (score_mem_tens), a
+    ld (deleteShapeFlag), a    
+    ld (speedUp), a
+
 initPlayAreaLoop        
     push bc
        ld bc, (initScreenIndex)
@@ -147,8 +174,8 @@ dropLoop
     jp noShapeMove								; dropped through to no move
     
 dropShapeAllTheWay    
-    ld a, 1
     ld (waitLoopDropFasterFlag), a
+    ld a, 1
     jp noShapeMove								; dropped through to no move
 
 shapeRight
@@ -245,7 +272,6 @@ shapeLeft
     ld (shape_row_index), a 
    
 noShapeMove	
-
     ;;; read the rotate shape after the left right is done,
     ;; we draw the shape then next time the delete shape code runs will delete rotated
     ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
@@ -259,6 +285,7 @@ noShapeMove
     jp nz, storeIncrementedRotation
     ld a, 0
     ld (rotationCount), a
+    
     ; need to subract 18 from shape offset to get back to original rotation
     ld a, (currentShapeOffset)
     sub 18    
@@ -293,27 +320,15 @@ addOneToHund
     daa    
     ld (score_mem_hund), a
 skipAddHund	
+    
 
 printScoreInGame
     ld bc, 6
     ld de, score_mem_tens
     call printNumber    
-      
 
-    ld a, (waitLoopDropFasterFlag)
-    cp 0
-    jp z,dropNormalSpeed
-
-    ld b, 0      ; set to zero no wait, drop fast 
-       
-dropNormalSpeed     
-    ld b,VSYNCLOOP
-waitloop	
-waitForTVSync	
 	call vsync
-	djnz waitForTVSync
     
-
     ld a,(flagForBottomHit)         ; on current shape draw we detected that if the shape dropped one
                                     ; more line it would hit the something
     cp 1                            ; if flagForBottomHit is set then this will set zero flag
@@ -480,14 +495,13 @@ printstring_loop
 printstring_end	
     ret  
 
-;check if TV synchro $f5a3 (FRAMES) happend
+;check if TV synchro  (FRAMES) happend
 vsync	
-	ld a,($f5a3)
-	ld c,a
-sync
-	ld a,($f5a3)
-	cp c
-	jr z,sync
+	ld hl, frames
+	ld a, (hl)
+    sub VSYNCLOOP
+wfr cp (hl)
+    jr nz, wfr
 	ret
 
 
@@ -513,30 +527,14 @@ printNumber_loop
     ret  
 
 drawShape  
-
-    ld hl, dfile
-    inc hl
-    inc hl
-    ld (hl), 8
-
     ld a,(deleteShapeFlag)     
     cp 1
     jp z, dontIncrementShapeRowIndex    ;; if we're deleting shape then skip increment shape_row_index
 
     ld a, (shape_row_index)
-    add a, 10                  ; always need ten as the offset, the left right just adds bit to this   
+    add a, 10                           ;; always need ten as the offset, the left right just adds bit to this   
     ld (shape_row_index), a
-
     
-    ld hl, dfile
-    inc hl
-    inc hl
-    inc hl
-    ld (hl), 9
-;debugHere2
-;    jp debugHere2
-
-
 dontIncrementShapeRowIndex
 
     ld a, (currentShapeOffset)
@@ -669,6 +667,7 @@ dfile
     db 118,130,131,131,131,131,131,131,131,129; 23
     db 118                                    ; 24
 vars
+    db 128          ; becomes end of screen
 
 game_over_txt1
 	db "G"-27,"A"-27,"M"-27,"E"-27,$ff    
@@ -741,10 +740,7 @@ score_mem_tens
 deleteShapeFlag
     db 0
 speedUp
-    db 0
-     
-
-    db 128          ; becomes end of screen
+    db 0  
 last     equ $
 end
 

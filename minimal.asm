@@ -59,6 +59,28 @@ dfile    db 118
          db "D"-27,"E"-27,"M"-27,"O"-27,0,"D"-27,"R"-27
          db $1b,"B"-27,"E"-27,"E"-27,"P"-27,118
 
+;; more than 32 characters on a display line!!!
+;; if instead of end of line (118 = halt instruction) you just 
+;; put 2 characters, then ZX81 will display them
+;; dr.beep's book suggests the 34th character cannot be inverse
+;; however my emulator does display that. not tried on real ZX81 yet!
+         db 1,1,1,1,1,1,1,1,1,1
+         db 1,1,1,1,1,1,1,1,1,1
+         db 1,1,1,1,1,1,1,1,1,1
+         db 1,1,1,"H"-27+128         
+         db 1,1,1,1,1,1,1,1,1,1
+         db 1,1,1,1,1,1,1,1,1,1
+         db 1,1,1,1,1,1,1,1,1,1
+         db 1,1,1,"H"-27+128        
+         db 1,1,1,1,1,1,1,1,1,1
+         db 1,1,1,1,1,1,1,1,1,1
+         db 1,1,1,1,1,1,1,1,1,1
+         db 1,1,1,"H"-27+128       
+         db 0,128,0,128,0,128,0,128,0,128
+         db 0,128,0,128,0,128,0,128,0,128
+         db 0,128,0,128,0,128,0,128,0,128
+         db 0,128,118
+         db $e9   ; jp (hl) fills rest of screen
 vars     db 128          ; becomes end of screen
 last     equ $
 end

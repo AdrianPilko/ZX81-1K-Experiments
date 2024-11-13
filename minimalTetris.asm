@@ -12,7 +12,7 @@
 ;   some shapes can move sideways into others,  incorrectly merging
 
 ;;;;;;;;;;;;;;;;;;
-;; current assembled size 1275 bytes!!!
+;; current assembled size 1236 bytes!!!
 ;;;;;;;;;;;;;;;;;;
 
 ; 12 bytes bytes from $4000 to $400b free reuable for own code
@@ -83,8 +83,8 @@ intro_title
     ;; if any varaibles are added or should be initialised to anything but zero then that needs to be
     ;; handled.
     ld hl, zero     ; zero is initialised to zero and never changed in the code!
-    ld bc, 32       ; we have 32 bytes of memory that needs zero'ing from...
-    ld de, speedUp  ; ...speedUp down to waitLoopDropFasterFlag
+    ld bc, 31       ; we have 32 bytes of memory that needs zero'ing from...
+    ld de, deleteShapeFlag  ; ...deleteShapeFlag down to waitLoopDropFasterFlag
     lddr
   
     ld b, BOTTOM
@@ -101,8 +101,8 @@ initPlayAreaLoop
     pop bc
     djnz initPlayAreaLoop
 
-    ld a, $df
-    ld (speedUp),a
+    ;ld a, $df
+    ;ld (speedUp),a
     
 ;; main game loop
 main
@@ -121,7 +121,7 @@ tryAnotherR                             ; generate random number to index shape 
     ld a, r                             ; we want a number 0 to 4 inclusive 
     and %00000111
     cp 6    
-    jp nc, tryAnotherR                  ; loop when nc flag set ie not less than 5 try again    
+    jr nc, tryAnotherR                  ; loop when nc flag set ie not less than 5 try again    
     ld (currentShapeOffset), a
 
     xor a
@@ -171,16 +171,16 @@ shapeRight
     ;straight shape offsets are 2, 8, 14, 20
     ld a, (currentShapeOffset)    
     cp 2
-    jp z, handleShapeRight_StrVert
+    jr z, handleShapeRight_StrVert
     ld a, (currentShapeOffset)
     cp 8
-    jp z, handleShapeRight_StrVert    
+    jr z, handleShapeRight_StrVert    
     ld a, (currentShapeOffset)
     cp 14
-    jp z, handleShapeRight_StrVert
+    jr z, handleShapeRight_StrVert
     ld a, (currentShapeOffset)
     cp 20
-    jp z, handleShapeRight_StrVert
+    jr z, handleShapeRight_StrVert
 
     ld a, (shapeTrackLeftRight)
     dec a
@@ -218,7 +218,7 @@ handleShapeRightForHorizontal
     jp z, handleShapeRight_StrHoriz
     ld a, (currentShapeOffset)
     cp 20
-    jp z, handleShapeRight_StrHoriz
+    jr z, handleShapeRight_StrHoriz
 
     ld a, (shapeTrackLeftRight)
     dec a
@@ -259,12 +259,12 @@ noShapeMove
     in a, (KEYBOARD_READ_PORT)					; read from io port	
     bit 2, a
     ; check bit set for key press rotate  use X key 
-    jp nz, drawShapeHook    
+    jr nz, drawShapeHook    
     ld a, (rotationCount)
     inc a
     cp 4
-    jp nz, storeIncrementedRotation
-    ld a, 0
+    jr nz, storeIncrementedRotation
+    xor a
     ld (rotationCount), a
     ; need to subract 18 from shape offset to get back to original rotation
     ld a, (currentShapeOffset)
@@ -276,7 +276,7 @@ noShapeMove
     ld (shape_row),a
 
     call drawShape
-    jp  preWaitloop
+    jr  preWaitloop
 
 storeIncrementedRotation    
     ld (rotationCount), a      
@@ -284,7 +284,7 @@ storeIncrementedRotation
     add a, 6    
     ld (currentShapeOffset),a
     call drawShape
-    jp  preWaitloop
+    jr  preWaitloop
 
 drawShapeHook    
     call drawShape
@@ -294,10 +294,10 @@ preWaitloop
     jr z, addOneToHund
     jr skipAddHund
 addOneToHund
-    ld a, 0
+    xor a
     ld (score_mem_tens), a
     ld a, (score_mem_hund)             
-    add a, 1
+    inc a
     daa    
     ld (score_mem_hund), a
 skipAddHund	
@@ -313,7 +313,7 @@ printScoreInGame
     jp z,dropNormalSpeed
 
     ld b, 1      ; set to zero no wait, drop fast 
-    jp waitloop   
+    jr waitloop   
 dropNormalSpeed     
     ld b,VSYNCLOOP
 waitloop	
@@ -349,30 +349,30 @@ checkLoopSetup
     ld (checkColOffsetStartRow), a    
     ld bc, (checkColOffsetStartRow)    
     add hl,bc
-    ld a, 0
+    xor a
     ld (checkColIndex), a     
 checkLine        
     ld a, (hl)
     and SHAPE_CHAR_0  
     inc hl
     cp SHAPE_CHAR_0
-    jp nz, setlineNOTComplete
+    jr nz, setlineNOTComplete
 afterSetlineNOTComplete
     
     ld a, (checkColIndex)
     inc a
     ld (checkColIndex), a
     cp 7
-    jp nz, checkLine                ; always complete check loop fully
+    jr nz, checkLine                ; always complete check loop fully
 
     ld a, (lineCompleteFlag)
     cp 1
-    jp z,removelineIsComplete
+    jr z,removelineIsComplete
 
     jp checkCompleteLoopInc
     
 setlineNOTComplete
-    ld a, 0
+    xor a
     ld (lineCompleteFlag),a
     jp afterSetlineNOTComplete   
     
@@ -381,12 +381,12 @@ removelineIsComplete
     push de    
     push bc
 
-    ld a, (speedUp)     ;; increase difficulty with each line removed
-    dec a
-    ld (speedUp),a
+    ;;ld a, (speedUp)     ;; increase difficulty with each line removed
+    ;;dec a
+    ;;ld (speedUp),a
 
     ld a,(score_mem_tens)				; add one to score, scoring is binary coded decimal (BCD)
-    add a,1	
+    inc a	
     daa									; z80 daa instruction realigns for BCD after add or subtract  
     ld (score_mem_tens),a				; add one to score, scoring is binary coded decimal (BCD)
     ; move all lives about this down by one
@@ -424,7 +424,7 @@ loopFor_7_Shuffle
     inc e
     ld a, e
     cp 7
-    jp nz, loopFor_7_Shuffle     
+    jr nz, loopFor_7_Shuffle     
 
     ; need to loop until reached top with copy of checkColOffsetStartRow    
     ld a,(copyOfCheckColOffsetStartRow)  
@@ -459,10 +459,7 @@ gameOver
     ld bc,32
     ld de,game_over_txt2
     call printstring	
-    ld bc, $ffff
-    ld a, 0
-    ld (score_mem_tens), a
-    ld (score_mem_hund), a	    
+    ld bc, $ffff    
 waitloopRetryGame
     dec bc
     ld a,b
@@ -587,7 +584,7 @@ drawShapeInner
     ld a, (deleteShapeFlag)     ;; if we're deleting the old shape then don't trigger collision
     cp 1
     jp z, drawTheDamnSquare
-    ld a, 1    
+    ld a, 1
     ld (flagForBottomHit), a
     
 drawTheDamnSquare    
@@ -728,8 +725,8 @@ score_mem_tens
     db 0    
 deleteShapeFlag
     db 0
-speedUp
-    db 0
+;speedUp
+;    db 0
 zero
     db 0  
 last     equ $

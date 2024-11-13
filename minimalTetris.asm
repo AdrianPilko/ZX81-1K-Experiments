@@ -12,7 +12,7 @@
 ;   some shapes can move sideways into others,  incorrectly merging
 
 ;;;;;;;;;;;;;;;;;;
-;; current assembled size 1326 bytes!!!
+;; current assembled size 1275 bytes!!!
 ;;;;;;;;;;;;;;;;;;
 
 ; 12 bytes bytes from $4000 to $400b free reuable for own code
@@ -79,36 +79,14 @@ DF_CC         equ    dfile+1
     
 ;; intro screen
 intro_title            
-    ;; this is wasteful of program code - we will be chaning this to a ldir setup from start to end of 
-    ;; the memory where the "variable" labels are because they're all zero anyway
-    ld hl, 0
-    xor a
-    ld (waitLoopDropFasterFlag), a
-    ld (shape_row_index), a     ; the current row of the top of the falling shape
-    ld (shape_col_index), a     ; the current column of the top left of the falling shape
-    ld (outerCount), hl 
-    ld (currentShapeOffset), hl    
-    ld (shapeTrackLeftRight), hl
-    ld (shape_row), a
-    ld (flagForBottomHit), a
-    ld (checkColOffsetStartRow), hl
-    ld (checkRowIndex), a
-    ld (checkColIndex), a
-    ld (lineCompleteFlag), a
-    ld (lineRemoved), hl
-    ld (lineToSuffleFrom), hl
-    ld (copyOfCheckColOffsetStartRow), hl
-    ld (rotationCount), a           ; zero means not rotated!    
-    ld (innerDrawLoopInit), a
-    ld (displayLineIncrement), hl
-    ld (displayOuterIncrement), hl    
-    ld (score_mem_hund), a  
-    ld (score_mem_tens), a
-    ld (deleteShapeFlag), a    
-    ld (speedUp), a
-
-    ; screenTetris16K.asm has already set everything including the title
-    ; clear the play area (is need for all after first game as play area will be filled with previous blocks
+    ;; this is to zero all the memory containing the game "variables" we do it from end to start using lddr
+    ;; if any varaibles are added or should be initialised to anything but zero then that needs to be
+    ;; handled.
+    ld hl, zero     ; zero is initialised to zero and never changed in the code!
+    ld bc, 32       ; we have 32 bytes of memory that needs zero'ing from...
+    ld de, speedUp  ; ...speedUp down to waitLoopDropFasterFlag
+    lddr
+  
     ld b, BOTTOM
     ld a, 11    
     ld (initScreenIndex),a    
@@ -334,8 +312,8 @@ printScoreInGame
     cp 0
     jp z,dropNormalSpeed
 
-    ld b, 0      ; set to zero no wait, drop fast 
-       
+    ld b, 1      ; set to zero no wait, drop fast 
+    jp waitloop   
 dropNormalSpeed     
     ld b,VSYNCLOOP
 waitloop	
@@ -751,6 +729,8 @@ score_mem_tens
 deleteShapeFlag
     db 0
 speedUp
+    db 0
+zero
     db 0  
 last     equ $
 end

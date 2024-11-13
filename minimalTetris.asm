@@ -75,15 +75,12 @@ SHAPE_CHAR_0  equ    128        ; black square
 SHAPE_CHAR_1  equ    136        ; grey square
 BOTTOM        equ    22         ; bottom row number
 VSYNCLOOP     equ    6         ; used for frame delay loop
-
+DF_CC         equ    dfile+1
     
 ;; intro screen
-intro_title        
-    ; clear the play area (is need for all after first game as play area will be filled with previous blocks
-    ld b, BOTTOM
-    ld a, 11    
-    ld (initScreenIndex),a    
-    
+intro_title            
+    ;; this is wasteful of program code - we will be chaning this to a ldir setup from start to end of 
+    ;; the memory where the "variable" labels are because they're all zero anyway
     ld hl, 0
     xor a
     ld (waitLoopDropFasterFlag), a
@@ -110,14 +107,19 @@ intro_title
     ld (deleteShapeFlag), a    
     ld (speedUp), a
 
+    ; screenTetris16K.asm has already set everything including the title
+    ; clear the play area (is need for all after first game as play area will be filled with previous blocks
+    ld b, BOTTOM
+    ld a, 11    
+    ld (initScreenIndex),a    
 initPlayAreaLoop        
     push bc
-       ld bc, (initScreenIndex)
-       ld de,screen_area_blank_txt
-       call printstring    
-       ld a,(initScreenIndex)    
-       add a, 10            
-       ld (initScreenIndex),a    
+    ld bc, (initScreenIndex)
+    ld de,screen_area_blank_txt
+    call printstring    
+    ld a,(initScreenIndex)    
+    add a, 10            
+    ld (initScreenIndex),a    
     pop bc
     djnz initPlayAreaLoop
 
@@ -174,8 +176,8 @@ dropLoop
     jp noShapeMove								; dropped through to no move
     
 dropShapeAllTheWay    
-    ld (waitLoopDropFasterFlag), a
     ld a, 1
+    ld (waitLoopDropFasterFlag), a
     jp noShapeMove								; dropped through to no move
 
 shapeRight
@@ -272,6 +274,7 @@ shapeLeft
     ld (shape_row_index), a 
    
 noShapeMove	
+
     ;;; read the rotate shape after the left right is done,
     ;; we draw the shape then next time the delete shape code runs will delete rotated
     ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
@@ -285,7 +288,6 @@ noShapeMove
     jp nz, storeIncrementedRotation
     ld a, 0
     ld (rotationCount), a
-    
     ; need to subract 18 from shape offset to get back to original rotation
     ld a, (currentShapeOffset)
     sub 18    
@@ -294,6 +296,7 @@ noShapeMove
     ld a, (shape_row)
     sub 2
     ld (shape_row),a
+
     call drawShape
     jp  preWaitloop
 
@@ -320,15 +323,27 @@ addOneToHund
     daa    
     ld (score_mem_hund), a
 skipAddHund	
-    
 
 printScoreInGame
     ld bc, 6
     ld de, score_mem_tens
     call printNumber    
+      
 
+    ld a, (waitLoopDropFasterFlag)
+    cp 0
+    jp z,dropNormalSpeed
+
+    ld b, 0      ; set to zero no wait, drop fast 
+       
+dropNormalSpeed     
+    ld b,VSYNCLOOP
+waitloop	
+waitForTVSync	
 	call vsync
+	djnz waitForTVSync
     
+
     ld a,(flagForBottomHit)         ; on current shape draw we detected that if the shape dropped one
                                     ; more line it would hit the something
     cp 1                            ; if flagForBottomHit is set then this will set zero flag
@@ -350,7 +365,7 @@ checkForCompleteLinesInit
 checkLoopSetup
     ld a, 1
     ld (lineCompleteFlag),a
-    ld hl,dfile
+    ld hl,DF_CC
     ld a, (checkColOffsetStartRow)
     add a, 10
     ld (checkColOffsetStartRow), a    
@@ -402,8 +417,7 @@ removelineIsComplete
     ld (copyOfCheckColOffsetStartRow), a
 
 playAreaShuffle
-    ld hl, dfile
-    inc hl
+    ld hl, DF_CC
     ld bc, (copyOfCheckColOffsetStartRow)    	; checkColOffsetStartRow is an offset from DF_CC, 
                                                 ; not address of screen memory
     add hl,bc
@@ -416,8 +430,7 @@ playAreaShuffle
     ld (lineToSuffleFrom), hl
     ld (lineToSuffleFrom) , a                   ; ...the line we're shuffling down from 
     ld bc,(lineToSuffleFrom)
-    ld hl, dfile
-    inc hl
+    ld hl, DF_CC
     add hl,bc
     ld (lineToSuffleFrom), hl                   ; lineToSuffleFrom is a 16 bit value now the offset 
                                                 ; from start of  screen memory
@@ -481,8 +494,7 @@ waitloopRetryGame
    
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
 printstring
-    ld hl,dfile
-    inc hl
+    ld hl,DF_CC
     add hl,bc	
 printstring_loop
     ld a,(de)
@@ -495,19 +507,19 @@ printstring_loop
 printstring_end	
     ret  
 
-;check if TV synchro  (FRAMES) happend
+;check if TV synchro (FRAMES) happend
 vsync	
-	ld hl, frames
-	ld a, (hl)
-    sub VSYNCLOOP
-wfr cp (hl)
-    jr nz, wfr
+	ld a,(frames)
+	ld c,a
+sync
+	ld a,(frames)
+	cp c
+	jr z,sync
 	ret
 
 
 printNumber
-    ld hl,dfile
-    inc hl
+    ld hl,DF_CC
     add hl,bc	
 printNumber_loop
     ld a,(de)
@@ -532,9 +544,9 @@ drawShape
     jp z, dontIncrementShapeRowIndex    ;; if we're deleting shape then skip increment shape_row_index
 
     ld a, (shape_row_index)
-    add a, 10                           ;; always need ten as the offset, the left right just adds bit to this   
+    add a, 10                  ; always need ten as the offset, the left right just adds bit to this   
     ld (shape_row_index), a
-    
+
 dontIncrementShapeRowIndex
 
     ld a, (currentShapeOffset)
@@ -545,8 +557,7 @@ dontIncrementShapeRowIndex
     ld a, (hl)    
     ld (currentShape), a
     ; draw shape at next row    
-    ld hl, dfile
-    inc hl
+    ld hl, DF_CC
     ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
 
     ;; this will only draw shape at top need to add current position offset

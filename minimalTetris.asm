@@ -12,7 +12,7 @@
 ;   some shapes can move sideways into others,  incorrectly merging
 
 ;;;;;;;;;;;;;;;;;;
-;; current assembled size 1178 bytes!!!
+;; current assembled size 1145 bytes!!!
 ;;;;;;;;;;;;;;;;;;
 
 ; 12 bytes bytes from $4000 to $400b free reuable for own code
@@ -83,7 +83,7 @@ intro_title
     ;; if any varaibles are added or should be initialised to anything but zero then that needs to be
     ;; handled.
     ld hl, zero     ; zero is initialised to zero and never changed in the code!
-    ld bc, 31       ; we have 32 bytes of memory that needs zero'ing from...
+    ld bc, 30       ; we have 32 bytes of memory that needs zero'ing from...
     ld de, deleteShapeFlag  ; ...deleteShapeFlag down to waitLoopDropFasterFlag
     lddr
   
@@ -100,22 +100,18 @@ initPlayAreaLoop
          add a, 10            
       pop bc
     djnz initPlayAreaLoop
-
-    ;ld a, $df
-    ;ld (speedUp),a
     
 ;; main game loop
 main
-    ld a, 1
+    xor a     ; set a to zero
+    ld (flagForBottomHit), a    
+    ld (rotationCount), a
+    inc a     ; a is now 1
     ld (shape_row),a
     ld a, 5
     ld (shapeTrackLeftRight),a     
     ld a, 13
-    ld (shape_row_index),a
-    xor a
-    ld (flagForBottomHit), a    
-    ld (rotationCount), a    
-
+    ld (shape_row_index),a    
    
 tryAnotherR                             ; generate random number to index shape memory
     ld a, r                             ; we want a number 0 to 4 inclusive 
@@ -123,9 +119,6 @@ tryAnotherR                             ; generate random number to index shape 
     cp 6    
     jr nc, tryAnotherR                  ; loop when nc flag set ie not less than 5 try again    
     ld (currentShapeOffset), a
-
-    xor a
-    ld (waitLoopDropFasterFlag),a
 
 ; read keyboard input, delete old shape move current shape down one
 dropLoop                                
@@ -146,22 +139,12 @@ dropLoop
     bit 2, a									; check bit set for key press right (M)
     jr z, shapeRight							; jump to move shape right	
 
-
-    ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard space to B
-    in a, (KEYBOARD_READ_PORT)					; read from io port		
-    bit 3, a									; check bit set for key press right (C)
-    jr z, dropShapeAllTheWay                    ; causes wait loop to be zero when C pressed
     jp noShapeMove								; dropped through to no move
     
-dropShapeAllTheWay    
-    ld a, 1
-    ld (waitLoopDropFasterFlag), a
-    jp noShapeMove								; dropped through to no move
-
 shapeRight
 
     ;; need to account for rotation when checking if shape can go further to right
-    ; and also special case for vertical drawn straight shape to go fully to right
+    ;; and also special case for vertical drawn straight shape to go fully to right
 
     ld a, (rotationCount)
     and %00000001       ;; work out if rotation count is odd or even    
@@ -292,13 +275,6 @@ printScoreInGame
     ld de, score_mem_tens
     call printNumber    
       
-
-    ld a, (waitLoopDropFasterFlag)
-    cp 0
-    jp z,dropNormalSpeed
-
-    ld b, 1      ; set to zero no wait, drop fast 
-    jr waitloop   
 dropNormalSpeed     
     ld b,VSYNCLOOP
 waitloop	
@@ -306,7 +282,6 @@ waitForTVSync
 	call vsync
 	djnz waitForTVSync
     
-
     ld a,(flagForBottomHit)         ; on current shape draw we detected that if the shape dropped one
                                     ; more line it would hit the something
     cp 1                            ; if flagForBottomHit is set then this will set zero flag

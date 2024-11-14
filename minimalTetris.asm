@@ -12,7 +12,7 @@
 ;   some shapes can move sideways into others,  incorrectly merging
 
 ;;;;;;;;;;;;;;;;;;
-;; current assembled size 1236 bytes!!!
+;; current assembled size 1204 bytes!!!
 ;;;;;;;;;;;;;;;;;;
 
 ; 12 bytes bytes from $4000 to $400b free reuable for own code
@@ -185,23 +185,15 @@ shapeRight
     ld a, (shapeTrackLeftRight)
     dec a
     cp 1
-    jp z, noShapeMove     
-    ld (shapeTrackLeftRight),a 
-    ld a, (shape_row_index)
-    inc a                  
-    ld (shape_row_index), a    
-    jp noShapeMove	
+    jp z, noShapeMove      
+    jr incShapeRowThenNoShape
 
 handleShapeRight_StrVert
     ld a, (shapeTrackLeftRight)
     dec a
     cp 0
-    jp z, noShapeMove     
-    ld (shapeTrackLeftRight),a 
-    ld a, (shape_row_index)
-    inc a                  
-    ld (shape_row_index), a    
-    jp noShapeMove	
+    jp z, noShapeMove      
+    jr incShapeRowThenNoShape
     
 handleShapeRightForHorizontal
 
@@ -224,22 +216,14 @@ handleShapeRightForHorizontal
     dec a
     cp 2
     jp z, noShapeMove     
-    ld (shapeTrackLeftRight),a 
-    ld a, (shape_row_index)
-    inc a                  
-    ld (shape_row_index), a    
-    jp noShapeMove	
+    jr incShapeRowThenNoShape	
     
 handleShapeRight_StrHoriz
     ld a, (shapeTrackLeftRight)
     dec a
     cp 3
     jp z, noShapeMove     
-    ld (shapeTrackLeftRight),a 
-    ld a, (shape_row_index)
-    inc a                  
-    ld (shape_row_index), a    
-    jp noShapeMove	
+    jr incShapeRowThenNoShape
 shapeLeft
     ld a, (shapeTrackLeftRight)
     inc a
@@ -250,7 +234,14 @@ shapeLeft
     ld a, (shape_row_index)
     dec a     
     ld (shape_row_index), a 
-   
+    jr noShapeMove
+
+incShapeRowThenNoShape
+    ld (shapeTrackLeftRight),a 
+    ld a, (shape_row_index)
+    inc a                  
+    ld (shape_row_index), a   
+    
 noShapeMove	
 
     ;;; read the rotate shape after the left right is done,

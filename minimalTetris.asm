@@ -12,7 +12,7 @@
 ;   some shapes can move sideways into others,  incorrectly merging
 
 ;;;;;;;;;;;;;;;;;;
-;; current assembled size 1145 bytes!!!
+;; current assembled size 1125 bytes!!!
 ;;;;;;;;;;;;;;;;;;
 
 ; 12 bytes bytes from $4000 to $400b free reuable for own code
@@ -72,7 +72,6 @@ KEYBOARD_READ_PORT_SPACE_TO_B equ $7F
 KEYBOARD_READ_PORT equ $FE 
 
 SHAPE_CHAR_0  equ    128        ; black square
-SHAPE_CHAR_1  equ    136        ; grey square
 BOTTOM        equ    22         ; bottom row number
 VSYNCLOOP     equ    6         ; used for frame delay loop
 DF_CC         equ    dfile+1
@@ -275,7 +274,6 @@ printScoreInGame
     ld de, score_mem_tens
     call printNumber    
       
-dropNormalSpeed     
     ld b,VSYNCLOOP
 waitloop	
 waitForTVSync	
@@ -337,14 +335,6 @@ setlineNOTComplete
     jp afterSetlineNOTComplete   
     
 removelineIsComplete          
-    push hl ; preserve for after printstring
-    push de    
-    push bc
-
-    ;;ld a, (speedUp)     ;; increase difficulty with each line removed
-    ;;dec a
-    ;;ld (speedUp),a
-
     ld a,(score_mem_tens)				; add one to score, scoring is binary coded decimal (BCD)
     inc a	
     daa									; z80 daa instruction realigns for BCD after add or subtract  
@@ -390,10 +380,6 @@ loopFor_7_Shuffle
     ld a,(copyOfCheckColOffsetStartRow)  
     cp 21
     jp nz, playAreaShuffle
-
-    pop bc
-    pop de         
-    pop hl
  
 checkCompleteLoopInc
     ld a, (checkRowIndex)
@@ -419,12 +405,10 @@ gameOver
     ld bc,32
     ld de,game_over_txt2
     call printstring	
-    ld bc, $ffff    
+    ld b, 60
 waitloopRetryGame
-    dec bc
-    ld a,b
-    or c
-    jr nz, waitloopRetryGame  
+    call vsync    
+    djnz waitloopRetryGame  
     jp intro_title
    
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
@@ -526,17 +510,15 @@ drawShapeInner
     ld a, (currentShape)    
     and c                               ; set to block or no block based on (shapes)     
     jp z, drawNothing
-    ; detect if hl is already drawn on (ie a block already in that location, if so stop
+    ;; detect if hl is already drawn on (ie a block already in that location, if so stop
     ;; we also need to draw the shape from the bottom upwards, because we want to detect the collision earlier
     ;; and actually we should to a "trial draw of shape then if no collisions actually draw it!!
 
     push hl
-    ;ld de, (displayLineIncrement)
     ld de, 10
     add hl, de
     ld a, (hl)
     and SHAPE_CHAR_0                      ; this will result in "true" if block exists already in that position    
-    ;cp 0                                ; don't need cp 0, as the and sets the flags (saved 2bytes wooo!)
     pop hl
                                         
     jp z, drawTheDamnSquare             ; set a flag to say if move shape one more down will be collision
@@ -550,18 +532,10 @@ drawShapeInner
 drawTheDamnSquare    
     ld a,(deleteShapeFlag)     ;; if we're deleting the old shape then don't draw anything
     cp 1
-    jp z, loadBlank
-
-    ld a, (currentShapeOffset)
-    and %00000011
-    ;cp 0                       ; don't need cp 0, as the and sets the flags (saved 2bytes wooo!)
-    jp z, loadAlternateShape1    
+    jp z, loadBlank   
     ld (hl), SHAPE_CHAR_0
     jr drawNothing
     
-loadAlternateShape1
-    ld (hl), SHAPE_CHAR_1
-    jr drawNothing
 loadBlank
     ld (hl), 0      ; this clears the block with space
 drawNothing
@@ -639,8 +613,6 @@ shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shap
 screen_area_blank_txt
     db 0,0,0,0,0,0,0,$ff
 
-waitLoopDropFasterFlag
-    db 0
 shape_row_index     ; the current row of the top of the falling shape
     db 0
 shape_col_index     ; the current column of the top left of the falling shape

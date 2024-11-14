@@ -12,7 +12,7 @@
 ;   some shapes can move sideways into others,  incorrectly merging
 
 ;;;;;;;;;;;;;;;;;;
-;; current assembled size 1204 bytes!!!
+;; current assembled size 1178 bytes!!!
 ;;;;;;;;;;;;;;;;;;
 
 ; 12 bytes bytes from $4000 to $400b free reuable for own code
@@ -89,16 +89,16 @@ intro_title
   
     ld b, BOTTOM
     ld a, 11    
-    ld (initScreenIndex),a    
 initPlayAreaLoop        
-    push bc
-    ld bc, (initScreenIndex)
-    ld de,screen_area_blank_txt
-    call printstring    
-    ld a,(initScreenIndex)    
-    add a, 10            
-    ld (initScreenIndex),a    
-    pop bc
+      push bc
+         ld b, 0
+         ld c, a
+         push af
+            ld de,screen_area_blank_txt
+            call printstring
+         pop af
+         add a, 10            
+      pop bc
     djnz initPlayAreaLoop
 
     ;ld a, $df
@@ -172,13 +172,10 @@ shapeRight
     ld a, (currentShapeOffset)    
     cp 2
     jr z, handleShapeRight_StrVert
-    ld a, (currentShapeOffset)
     cp 8
     jr z, handleShapeRight_StrVert    
-    ld a, (currentShapeOffset)
     cp 14
     jr z, handleShapeRight_StrVert
-    ld a, (currentShapeOffset)
     cp 20
     jr z, handleShapeRight_StrVert
 
@@ -202,13 +199,10 @@ handleShapeRightForHorizontal
     ld a, (currentShapeOffset)    
     cp 2
     jp z, handleShapeRight_StrHoriz
-    ld a, (currentShapeOffset)
     cp 8
-    jp z, handleShapeRight_StrHoriz    
-    ld a, (currentShapeOffset)
+    jp z, handleShapeRight_StrHoriz
     cp 14
     jp z, handleShapeRight_StrHoriz
-    ld a, (currentShapeOffset)
     cp 20
     jr z, handleShapeRight_StrHoriz
 

@@ -1,19 +1,19 @@
-;;;;;;;;;;;;;;;;;;;;;
-;;; zx81 1K code 
-;;; It's a clone of tetris (in case that wasn't clear from filename;)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; assembled size 1102 bytes ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Tetris clone aiming to fit in 1K for the ZX81
+;;;
+;;; keys: z left, m right, x rotate block
+;;;
 ;;; Adrian Pilkington (youtube: ByteForever) 2024
 ;;; reworked tetris16K.asm in an attempt to actually fit in 1K !!
 ;;;
 ;;; Using "model" minimal machine code skeleton, from Dr.Beep's 
 ;;; book: The Ulitmate 1K ZX81 coding book
-;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; TODO  / bugs
 ;   when shape next to edge no logic to prevent rotation, so sticks to wall or worse goes through
 ;   some shapes can move sideways into others,  incorrectly merging
-
-;;;;;;;;;;;;;;;;;;
-;; current assembled size 1125 bytes!!!
-;;;;;;;;;;;;;;;;;;
 
 ; 12 bytes bytes from $4000 to $400b free reuable for own code
 
@@ -82,7 +82,7 @@ intro_title
     ;; if any varaibles are added or should be initialised to anything but zero then that needs to be
     ;; handled.
     ld hl, zero     ; zero is initialised to zero and never changed in the code!
-    ld bc, 30       ; we have 32 bytes of memory that needs zero'ing from...
+    ld bc, 28       ; we have 28 bytes of memory that needs zero'ing from...
     ld de, deleteShapeFlag  ; ...deleteShapeFlag down to waitLoopDropFasterFlag
     lddr
   
@@ -256,24 +256,9 @@ storeIncrementedRotation
 drawShapeHook    
     call drawShape
 preWaitloop	
-    ld a, (score_mem_tens)
-    cp 153
-    jr z, addOneToHund
-    jr skipAddHund
-addOneToHund
-    xor a
-    ld (score_mem_tens), a
-    ld a, (score_mem_hund)             
-    inc a
-    daa    
-    ld (score_mem_hund), a
-skipAddHund	
-
-printScoreInGame
     ld bc, 6
     ld de, score_mem_tens
-    call printNumber    
-      
+    call printNumber          
     ld b,VSYNCLOOP
 waitloop	
 waitForTVSync	
@@ -515,10 +500,10 @@ drawShapeInner
     ;; and actually we should to a "trial draw of shape then if no collisions actually draw it!!
 
     push hl
-    ld de, 10
-    add hl, de
-    ld a, (hl)
-    and SHAPE_CHAR_0                      ; this will result in "true" if block exists already in that position    
+       ld de, 10
+       add hl, de
+       ld a, (hl)
+       and SHAPE_CHAR_0                      ; this will result in "true" if block exists already in that position    
     pop hl
                                         
     jp z, drawTheDamnSquare             ; set a flag to say if move shape one more down will be collision
@@ -625,8 +610,6 @@ shapeTrackLeftRight
     dw 0    
 shape_row
     db 0
-initScreenIndex 
-    db 0
 flagForBottomHit
     db 0
 checkColOffsetStartRow
@@ -650,15 +633,11 @@ innerDrawLoopInit
 displayLineIncrement
     dw 0
 displayOuterIncrement    
-    dw 0    
-score_mem_hund
-    db 0	    
-score_mem_tens
+    dw 0       
+score_mem_tens          ; the game is that hard we only need 2 digit scoring!!!
     db 0    
 deleteShapeFlag
     db 0
-;speedUp
-;    db 0
 zero
     db 0  
 last     equ $

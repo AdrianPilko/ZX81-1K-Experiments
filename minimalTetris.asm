@@ -1,9 +1,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; assembled size 1091 bytes ;;
+;; assembled size 1084 bytes ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
 ;;;
-;;; keys: z left, m right, x rotate block
+;;; keys: o left, p right, q or space to rotate block
 ;;;
 ;;; Adrian Pilkington (youtube: ByteForever) 2024
 ;;; reworked tetris16K.asm in an attempt to actually fit in 1K !!
@@ -12,8 +12,10 @@
 ;;; book: The Ulitmate 1K ZX81 coding book
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; TODO  / bugs
-;   when shape next to edge no logic to prevent rotation, so sticks to wall or worse goes through
-;   some shapes can move sideways into others,  incorrectly merging
+;   1) main aim is to get it below 1K, but really the p file needs to be less than that to load 
+;   2) would be good to be able to rotate shape left and right
+;   3) when shape next to edge no logic to prevent rotation, so sticks to wall or worse goes through
+;   4) some shapes can move sideways into others,  incorrectly merging
 
 ; 12 bytes bytes from $4000 to $400b free reuable for own code
 
@@ -91,11 +93,13 @@ initPlayAreaLoop
     djnz initPlayAreaLoop
     
     ld hl, dfile+8  ;; this is position of score right most digit on screen
-    ld b, 4
-setScoreToZero
+    ;ld b, 4
+;setScoreToZero     ; we could have 4 digit score but saving memory on init
+                    ; unrolling the loop and just have 2 digits
     ld (hl),28  ; value of "0" is 28 
     dec hl
-    djnz setScoreToZero
+    ld (hl),28  ; value of "0" is 28 
+    ;djnz setScoreToZero
 
 ;; main game loop
 main
@@ -214,7 +218,9 @@ noShapeMove
     ;;; read the rotate shape after the left right is done,
     ;; we draw the shape then next time the delete shape code runs will delete rotated
     call getKey
-    cp 10                  ; Q key for rotate
+    cp 10                  ; Q key for rotate - better on real zx81
+    jr z, doRotation
+    cp 35                  ; or space key - on zx81 it's not easy to use (better when in emulator)
     jr z, doRotation
     jr drawShapeHook    
 doRotation   
@@ -246,11 +252,16 @@ storeIncrementedRotation
 
 drawShapeHook    
     call drawShape
+
 preWaitloop	          
-    ld b,VSYNCLOOP
-waitloop	
+    ld b,VSYNCLOOP	
 waitForTVSync	
-	call vsync
+    ld a,(frames)
+	ld c,a
+sync1
+	   ld a,(frames)
+	   cp c
+	jr z,sync1
 	djnz waitForTVSync
     
     ld a,(flagForBottomHit)         ; on current shape draw we detected that if the shape dropped one
@@ -389,12 +400,17 @@ gameOver
     ld bc,22
     ld de,game_over_txt1    
     call printstring	    
-    ld bc,32
-    ld de,game_over_txt2
-    call printstring	
+    ;ld bc,32
+    ;ld de,game_over_txt2
+    ;call printstring	
     ld b, 60
 waitloopRetryGame
-    call vsync    
+    ld a,(frames)
+	ld c,a
+sync2
+	   ld a,(frames)
+	   cp c
+	jr z,sync2
     djnz waitloopRetryGame  
     jp intro_title
    
@@ -412,16 +428,6 @@ printstring_loop
     jr printstring_loop
 printstring_end	
     ret  
-
-;check if TV synchro (FRAMES) happend
-vsync	
-	ld a,(frames)
-	ld c,a
-sync
-	ld a,(frames)
-	cp c
-	jr z,sync
-	ret
 
 drawShape  
     ld a,(deleteShapeFlag)     
@@ -535,7 +541,7 @@ getKey
 ; which, if it crashes on startup we know it's run out, otherwise 
 ; that will be overwritten byt he game if alls ok
 dfile
-    db 118,5, "S"-27,"C"-27,0,0,0,0,0,132  ; 0, 136 first chr$118 marks the start of DFILE     
+    db 118,5, "S"-27,"C"-27,"O"-27,"R"-27,"E"-27,0,0,132  ; 0, 136 first chr$118 marks the start of DFILE     
     db 118,5,136,136,136,136,136,136,136,133  ; 1, play area offset from DF_CC 12 to 18 
     db 118,5,136,136,136,136,136,136,136,133  ; 2, "" 22 to 28  
     db 118,5,136,136,136,136,136,136,136,133  ; 3  "" 32 to 38
@@ -564,9 +570,7 @@ vars
     db 128          ; becomes end of screen
 
 game_over_txt1
-	db "G"-27,"A"-27,"M"-27,"E"-27,$ff    
-game_over_txt2
-    db "O"-27,"V"-27,"E"-27,"R"-27,$ff        
+	db "U"-27,0,"L"-27,"O"-27,"S"-27,"T"-27,$ff        
 currentShape    
     db 0
 shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shape

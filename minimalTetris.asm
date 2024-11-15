@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; assembled size 1102 bytes ;;
+;; assembled size 1091 bytes ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
 ;;;
@@ -61,19 +61,9 @@ frames   db $37          ; after load: ld (hl), n
 cdflag   db 64
 
 ; DO NOT CHANGE SYSVAR ABOVE!
-
-; keyboard port for shift key to v
-KEYBOARD_READ_PORT_SHIFT_TO_V equ $FE
-
-; keyboard space to b
-KEYBOARD_READ_PORT_SPACE_TO_B equ $7F 
-
-; starting port numbner for keyboard, is same as first port for shift to v
-KEYBOARD_READ_PORT equ $FE 
-
 SHAPE_CHAR_0  equ    128        ; black square
 BOTTOM        equ    22         ; bottom row number
-VSYNCLOOP     equ    6         ; used for frame delay loop
+VSYNCLOOP     equ    7         ; used for frame delay loop
 DF_CC         equ    dfile+1
     
 ;; intro screen
@@ -82,7 +72,7 @@ intro_title
     ;; if any varaibles are added or should be initialised to anything but zero then that needs to be
     ;; handled.
     ld hl, zero     ; zero is initialised to zero and never changed in the code!
-    ld bc, 28       ; we have 28 bytes of memory that needs zero'ing from...
+    ld bc, 27       ; we have 27 bytes of memory that needs zero'ing from...
     ld de, deleteShapeFlag  ; ...deleteShapeFlag down to waitLoopDropFasterFlag
     lddr
   
@@ -100,6 +90,13 @@ initPlayAreaLoop
       pop bc
     djnz initPlayAreaLoop
     
+    ld hl, dfile+8  ;; this is position of score right most digit on screen
+    ld b, 4
+setScoreToZero
+    ld (hl),28  ; value of "0" is 28 
+    dec hl
+    djnz setScoreToZero
+
 ;; main game loop
 main
     xor a     ; set a to zero
@@ -127,17 +124,11 @@ dropLoop
     xor a                           ;  xor a is always zero and saves 1 byte compared to ld a, 0
     ld (deleteShapeFlag),a          ;  clear the flag
 
-    ; read the keyboard input and adust the offset     
-    ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
-    in a, (KEYBOARD_READ_PORT)					; read from io port	
-    bit 1, a
-    ; check bit set for key press left  (Z)
-    jp z, shapeLeft								; jump to move shape left
-    ld a, KEYBOARD_READ_PORT_SPACE_TO_B			; read keyboard space to B
-    in a, (KEYBOARD_READ_PORT)					; read from io port		
-    bit 2, a									; check bit set for key press right (M)
-    jr z, shapeRight							; jump to move shape right	
-
+    call getKey  ; stores value of key in a
+    cp 26                  ; O key for left
+    jp z, shapeLeft 
+    cp 25                  ; P 
+    jp z, shapeRight 
     jp noShapeMove								; dropped through to no move
     
 shapeRight
@@ -222,11 +213,11 @@ noShapeMove
 
     ;;; read the rotate shape after the left right is done,
     ;; we draw the shape then next time the delete shape code runs will delete rotated
-    ld a, KEYBOARD_READ_PORT_SHIFT_TO_V			; read keyboard shift to v
-    in a, (KEYBOARD_READ_PORT)					; read from io port	
-    bit 2, a
-    ; check bit set for key press rotate  use X key 
-    jr nz, drawShapeHook    
+    call getKey
+    cp 10                  ; Q key for rotate
+    jr z, doRotation
+    jr drawShapeHook    
+doRotation   
     ld a, (rotationCount)
     inc a
     cp 4
@@ -255,10 +246,7 @@ storeIncrementedRotation
 
 drawShapeHook    
     call drawShape
-preWaitloop	
-    ld bc, 6
-    ld de, score_mem_tens
-    call printNumber          
+preWaitloop	          
     ld b,VSYNCLOOP
 waitloop	
 waitForTVSync	
@@ -320,10 +308,24 @@ setlineNOTComplete
     jp afterSetlineNOTComplete   
     
 removelineIsComplete          
-    ld a,(score_mem_tens)				; add one to score, scoring is binary coded decimal (BCD)
-    inc a	
-    daa									; z80 daa instruction realigns for BCD after add or subtract  
-    ld (score_mem_tens),a				; add one to score, scoring is binary coded decimal (BCD)
+    ;ld a,(score_mem_tens)				; add one to score, scoring is binary coded decimal (BCD)
+    ;inc a	
+    ;daa									; z80 daa instruction realigns for BCD after add or subtract  
+    ;ld (score_mem_tens),a				; add one to score, scoring is binary coded decimal (BCD)
+    
+add1ToScore   ; we use the screen memory to store the score to save bytes
+    
+    ld hl, dfile+9 ; one position behind score   
+    db 17
+incTens
+    ld (hl), 28
+    dec hl   ; move to next digit
+    inc (hl) ; add one point
+    ld a, (hl)
+    cp 38      ; check if greater than "9" 
+    jr z, incTens
+    
+    
     ; move all lives about this down by one
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ld a, (checkColOffsetStartRow)
@@ -420,27 +422,6 @@ sync
 	cp c
 	jr z,sync
 	ret
-
-
-printNumber
-    ld hl,DF_CC
-    add hl,bc	
-printNumber_loop
-    ld a,(de)
-    push af ;store the original value of a for later
-    and $f0 ; isolate the first digit
-    rra
-    rra
-    rra
-    rra
-    add a,$1c ; add 28 to the character code
-    ld (hl), a
-    inc hl
-    pop af ; retrieve original value of a
-    and $0f ; isolate the second digit
-    add a,$1c ; add 28 to the character code
-    ld (hl), a      
-    ret  
 
 drawShape  
     ld a,(deleteShapeFlag)     
@@ -540,13 +521,21 @@ drawNothing
     jp nz, drawShapeOuter
 
     ret    
-     
+getKey
+    ;; changed to use the method of reading keys that uses the ROM routine $7bd
+    ;; then we test for the key number in a. ALso using more standard keys (O, P left right, q will be rotate (further down))
+    ld bc,(lastk)
+    ld a, c
+    inc a
+    call nz,$7bd
+    ret     
+
 ; the playing area is a shrunk down ZX81 display. 
 ; in addition to the play area we have "out of memory" embeded
 ; which, if it crashes on startup we know it's run out, otherwise 
 ; that will be overwritten byt he game if alls ok
 dfile
-    db 118,"S"-27,"C"-27,"O"-27,"R"-27,"E"-27,3,3,3,132  ; 0, 136 first chr$118 marks the start of DFILE     
+    db 118,5, "S"-27,"C"-27,0,0,0,0,0,132  ; 0, 136 first chr$118 marks the start of DFILE     
     db 118,5,136,136,136,136,136,136,136,133  ; 1, play area offset from DF_CC 12 to 18 
     db 118,5,136,136,136,136,136,136,136,133  ; 2, "" 22 to 28  
     db 118,5,136,136,136,136,136,136,136,133  ; 3  "" 32 to 38
@@ -633,9 +622,7 @@ innerDrawLoopInit
 displayLineIncrement
     dw 0
 displayOuterIncrement    
-    dw 0       
-score_mem_tens          ; the game is that hard we only need 2 digit scoring!!!
-    db 0    
+    dw 0          
 deleteShapeFlag
     db 0
 zero

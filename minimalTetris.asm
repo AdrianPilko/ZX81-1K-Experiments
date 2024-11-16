@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; assembled size 1084 bytes ;;
+;; assembled size 1083 bytes ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
 ;;;
@@ -13,9 +13,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; TODO  / bugs
 ;   1) main aim is to get it below 1K, but really the p file needs to be less than that to load 
-;   2) would be good to be able to rotate shape left and right
+;   2) would be good to be able to rotate shape anti and clockwise - 
 ;   3) when shape next to edge no logic to prevent rotation, so sticks to wall or worse goes through
 ;   4) some shapes can move sideways into others,  incorrectly merging
+;   5) it would make fiting in 1K even harder but the play area should
+;      in "proper" tetris be 10 blocks wide, not 7
+;   6) in real tetris you get bonus for multiline completion
 
 ; 12 bytes bytes from $4000 to $400b free reuable for own code
 
@@ -92,14 +95,13 @@ initPlayAreaLoop
       pop bc
     djnz initPlayAreaLoop
     
-    ld hl, dfile+8  ;; this is position of score right most digit on screen
-    ;ld b, 4
-;setScoreToZero     ; we could have 4 digit score but saving memory on init
+    ld hl, score+2  ;; this is position of score right most digit on screen
+    ld b, 3
+setScoreToZero     ; we could have 4 digit score but saving memory on init
                     ; unrolling the loop and just have 2 digits
     ld (hl),28  ; value of "0" is 28 
     dec hl
-    ld (hl),28  ; value of "0" is 28 
-    ;djnz setScoreToZero
+    djnz setScoreToZero
 
 ;; main game loop
 main
@@ -254,16 +256,9 @@ drawShapeHook
     call drawShape
 
 preWaitloop	          
-    ld b,VSYNCLOOP	
-waitForTVSync	
-    ld a,(frames)
-	ld c,a
-sync1
-	   ld a,(frames)
-	   cp c
-	jr z,sync1
-	djnz waitForTVSync
-    
+    ld b, VSYNCLOOP	
+    call waitForTVSync	
+
     ld a,(flagForBottomHit)         ; on current shape draw we detected that if the shape dropped one
                                     ; more line it would hit the something
     cp 1                            ; if flagForBottomHit is set then this will set zero flag
@@ -326,7 +321,7 @@ removelineIsComplete
     
 add1ToScore   ; we use the screen memory to store the score to save bytes
     
-    ld hl, dfile+9 ; one position behind score   
+    ld hl, dfile+5 ; one position behind score   
     db 17
 incTens
     ld (hl), 28
@@ -397,21 +392,21 @@ checkIfTopWillBeHit                     ; call if bottom was hit and if this mea
 
     
 gameOver
-    ld bc,22
-    ld de,game_over_txt1    
-    call printstring	    
-    ;ld bc,32
-    ;ld de,game_over_txt2
-    ;call printstring	
-    ld b, 60
-waitloopRetryGame
-    ld a,(frames)
-	ld c,a
-sync2
-	   ld a,(frames)
-	   cp c
-	jr z,sync2
-    djnz waitloopRetryGame  
+    ;;; set high score using dr.beeps method
+    ld hl, score-1
+    ld de, highScore-1
+    ld bc, 4
+scoreSame
+    dec c
+    inc de
+    inc hl
+    ld a,(de)
+    cp (hl)
+    jr z, scoreSame
+    call c,$a6e
+
+    ld b, 120  ; set delay time in b, 55 approx 1second 
+    call waitForTVSync	  
     jp intro_title
    
 ; this prints at top any offset (stored in bc) from the top of the screen D_FILE
@@ -536,12 +531,26 @@ getKey
     call nz,$7bd
     ret     
 
+waitForTVSync    ; set b to the delay time which is multiples of the refresh 55 approx 1 second	
+    ld a,(frames)
+	ld c,a
+sync1
+	   ld a,(frames)
+	   cp c
+	jr z,sync1
+	djnz waitForTVSync
+    ret
 ; the playing area is a shrunk down ZX81 display. 
 ; in addition to the play area we have "out of memory" embeded
 ; which, if it crashes on startup we know it's run out, otherwise 
 ; that will be overwritten byt he game if alls ok
 dfile
-    db 118,5, "S"-27,"C"-27,"O"-27,"R"-27,"E"-27,0,0,132  ; 0, 136 first chr$118 marks the start of DFILE     
+    db 118,"S"-27
+score    
+    db 0,0,0
+    db "H"-27,"S"-27
+highScore
+    db 28,28,28  ; 0, 136 first chr$118 marks the start of DFILE     
     db 118,5,136,136,136,136,136,136,136,133  ; 1, play area offset from DF_CC 12 to 18 
     db 118,5,136,136,136,136,136,136,136,133  ; 2, "" 22 to 28  
     db 118,5,136,136,136,136,136,136,136,133  ; 3  "" 32 to 38
@@ -569,8 +578,6 @@ dfile
 vars
     db 128          ; becomes end of screen
 
-game_over_txt1
-	db "U"-27,0,"L"-27,"O"-27,"S"-27,"T"-27,$ff        
 currentShape    
     db 0
 shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shape

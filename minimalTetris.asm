@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; assembled size 1084 bytes ;;
+;; assembled size 1053 bytes ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
 ;;;
@@ -168,14 +168,14 @@ handleShapeRightForHorizontal
     ;; ok so check if shape is straight, if so gets less width. 
     ;straight shape offsets are 2, 8, 14, 20
     ld a, (currentShapeOffset)    
-    cp 2
-    jp z, handleShapeRight_StrHoriz
-    cp 8
-    jp z, handleShapeRight_StrHoriz
-    cp 14
-    jp z, handleShapeRight_StrHoriz
-    cp 20
-    jr z, handleShapeRight_StrHoriz
+;    cp 2
+;    jp z, handleShapeRight_StrHoriz
+;    cp 8
+;    jp z, handleShapeRight_StrHoriz
+;    cp 14
+;    jp z, handleShapeRight_StrHoriz
+;    cp 20
+;    jr z, handleShapeRight_StrHoriz
 
     ld a, (shapeTrackLeftRight)
     dec a
@@ -183,12 +183,12 @@ handleShapeRightForHorizontal
     jp z, noShapeMove     
     jr incShapeRowThenNoShape	
     
-handleShapeRight_StrHoriz
-    ld a, (shapeTrackLeftRight)
-    dec a
-    cp 3
-    jp z, noShapeMove     
-    jr incShapeRowThenNoShape
+;handleShapeRight_StrHoriz
+;    ld a, (shapeTrackLeftRight)
+;    dec a
+;    cp 3
+;    jp z, noShapeMove     
+;    jr incShapeRowThenNoShape
 shapeLeft
     ld a, (shapeTrackLeftRight)
     inc a

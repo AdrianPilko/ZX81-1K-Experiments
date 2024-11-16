@@ -82,19 +82,22 @@ intro_title
     lddr
   
     ld b, BOTTOM
-    ld a, 11    
+    ld hl, dfile+11
+    ld de, 11    
 initPlayAreaLoop        
       push bc
-         ld b, 0
-         ld c, a
-         push af
-            ld de,screen_area_blank_txt
-            call printstring
-         pop af
-         add a, 10            
+      ld b, 6
+initPlayerColLoop
+         inc hl
+         ld (hl), 128
+         djnz initPlayerColLoop
+         add hl, de            
       pop bc
     djnz initPlayAreaLoop
-    
+
+
+debugEnd 
+    jp debugEnd
     ld hl, score+2  ;; this is position of score right most digit on screen
     ld b, 3
 setScoreToZero     ; we could have 4 digit score but saving memory on init
@@ -445,7 +448,6 @@ dontIncrementShapeRowIndex
     ; draw shape at next row    
     ld hl, DF_CC
     ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
-
     ;; this will only draw shape at top need to add current position offset
     add hl, de                          ; to where we want to draw shape
     ld c, %10000000                     ; mask for shape (initialised, but will be rotated  )
@@ -599,9 +601,8 @@ screen_area_blank_txt
     db 0,0,0,0,0,0,0,$ff
 
 shape_row_index     ; the current row of the top of the falling shape
-    db 0
-shape_col_index     ; the current column of the top left of the falling shape
-    db 0
+    db 0   
+    db 0     ; needs to be 2 bytes and second one zero as we ld de to enable add hl,de
 outerCount  
     dw 0
 currentShapeOffset    

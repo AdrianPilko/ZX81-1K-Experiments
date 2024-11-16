@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; assembled size 1083 bytes ;;
+;; assembled size 1084 bytes ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
 ;;;
@@ -67,6 +67,7 @@ cdflag   db 64
 
 ; DO NOT CHANGE SYSVAR ABOVE!
 SHAPE_CHAR_0  equ    128        ; black square
+BLANK_SQUARE  equ    0          ; empty 
 BOTTOM        equ    22         ; bottom row number
 VSYNCLOOP     equ    7         ; used for frame delay loop
 DF_CC         equ    dfile+1
@@ -81,23 +82,11 @@ intro_title
     ld de, deleteShapeFlag  ; ...deleteShapeFlag down to waitLoopDropFasterFlag
     lddr
   
-    ld b, BOTTOM
-    ld hl, dfile+11
-    ld de, 11    
-initPlayAreaLoop        
-      push bc
-      ld b, 6
-initPlayerColLoop
-         inc hl
-         ld (hl), 128
-         djnz initPlayerColLoop
-         add hl, de            
-      pop bc
-    djnz initPlayAreaLoop
+    ld a, BLANK_SQUARE
+    call fillPlayerArea
 
-
-debugEnd 
-    jp debugEnd
+;debugEnd 
+;    jp debugEnd
     ld hl, score+2  ;; this is position of score right most digit on screen
     ld b, 3
 setScoreToZero     ; we could have 4 digit score but saving memory on init
@@ -408,24 +397,21 @@ scoreSame
     jr z, scoreSame
     call c,$a6e
 
-    ld b, 120  ; set delay time in b, 55 approx 1second 
-    call waitForTVSync	  
+    ld b, 5
+endGameFlashArea
+    push bc
+      ld a, "X"-27  ; set to play area to this when lost
+      call fillPlayerArea
+      ld b, 10  ; set delay time in b, 55 approx 1second 
+      call waitForTVSync
+      ld a, 0  ; set to play area to this when lost
+      call fillPlayerArea
+      ld b, 10  ; set delay time in b, 55 approx 1second 
+      call waitForTVSync
+    pop bc
+    djnz endGameFlashArea	  
     jp intro_title
-   
-; this prints at top any offset (stored in bc) from the top of the screen D_FILE
-printstring
-    ld hl,DF_CC
-    add hl,bc	
-printstring_loop
-    ld a,(de)
-    cp $ff
-    jp z,printstring_end
-    ld (hl),a
-    inc hl
-    inc de
-    jr printstring_loop
-printstring_end	
-    ret  
+
 
 drawShape  
     ld a,(deleteShapeFlag)     
@@ -533,6 +519,23 @@ getKey
     call nz,$7bd
     ret     
 
+fillPlayerArea    ; set a to the character to fill with
+     ld b, BOTTOM
+     ld hl, dfile+11
+initPlayAreaLoop        
+      push bc
+      ld b, 7
+initPlayerColLoop
+         inc hl
+         ld (hl), a
+         djnz initPlayerColLoop
+         inc hl        
+         inc hl
+         inc hl
+      pop bc
+    djnz initPlayAreaLoop
+    ret
+
 waitForTVSync    ; set b to the delay time which is multiples of the refresh 55 approx 1 second	
     ld a,(frames)
 	ld c,a
@@ -578,7 +581,7 @@ highScore
     db 118,130,131,131,131,131,131,131,131,129; 23
     db 118                                    ; 24
 vars
-    db 128          ; becomes end of screen
+;    db 128          ; becomes end of screen
 
 currentShape    
     db 0
@@ -596,9 +599,6 @@ shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shap
    db %11001100,  %00101110,%00001111,%11100100,%01101100, %11000110   ; should be drawn horiz
    db %00111100,  %11010100,%10101010,%10111000,%10110100, %00011110   ; should be drawn vertically
    db %11001100,  %11101000,%00001111,%01001110,%01101100, %11000110   ; should be drawn horiz   
-
-screen_area_blank_txt
-    db 0,0,0,0,0,0,0,$ff
 
 shape_row_index     ; the current row of the top of the falling shape
     db 0   

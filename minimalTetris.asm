@@ -69,6 +69,7 @@ cdflag   db 64
 SHAPE_CHAR_0  equ    128        ; black square
 BLANK_SQUARE  equ    0          ; empty 
 BOTTOM        equ    22         ; bottom row number
+LINE_LENGTH   equ    10         
 VSYNCLOOP     equ    6         ; used for frame delay loop
 DF_CC         equ    dfile+1
     
@@ -82,7 +83,6 @@ intro_title
     ld de, deleteShapeFlag  ; ...deleteShapeFlag down to waitLoopDropFasterFlag
     lddr
 
-    ld a, BLANK_SQUARE
     call fillPlayerArea
 
     ld hl, score+2  ;; this is position of score right most digit on screen
@@ -396,16 +396,9 @@ scoreSame
     jr z, scoreSame
     call c,$a6e
 
-    ld b, 5
+    ld b, 10
 endGameFlashArea
-    push bc
-      ld a, "X"-27  ; set to play area to this when lost
-      call fillPlayerArea
-      ld b, 10  ; set delay time in b, 55 approx 1second 
-      call waitForTVSync
-      ld a, 0  ; set to play area to this when lost
-      call fillPlayerArea
-      ld b, 10  ; set delay time in b, 55 approx 1second 
+    push bc 
       call waitForTVSync
     pop bc
     djnz endGameFlashArea	  
@@ -518,32 +511,20 @@ getKey
     call nz,$7bd
     ret     
 
-fillPlayerArea    ; set a to the character to fill with
-     ld b, BOTTOM
-     ld hl, dfile+11
-initPlayAreaLoop    
-      ld (hl),5    
-      push bc
-      ld b, 7
-initPlayerColLoop
-         inc hl
-         ld (hl), a
-         djnz initPlayerColLoop
-         inc hl
-         ld (hl), 133        
-         inc hl
-         ld (hl), 118   ; end of line character
-         inc hl   
-      pop bc
-    djnz initPlayAreaLoop
-    ld (hl), 130
+fillPlayerArea 
+    ld bc, BOTTOM*LINE_LENGTH
+    ld hl, line1  
+    ld de, line2
+    ldir           ; replicate the first line down full area
+    ld (hl), 130   ; set the bottom left corner
     inc hl
-    ld b, 7
-initPlayAreaLoop2    
-      ld (hl),131    
-      inc hl
-    djnz initPlayAreaLoop2
-    ld (hl), 129
+    ld (hl), 131   ; set next to bottom left character in prep for copy accross    
+    ld bc, 7
+    ld d, h
+    ld e, l
+    inc de
+    ldir           ; fill bottom row
+    ld (hl), 129   ; set bottom right corner
     inc hl 
     ld (hl), 118   ; end of line character
     ret
@@ -622,14 +603,14 @@ zero
 ; which, if it crashes on startup we know it's run out, otherwise 
 ; that will be overwritten byt he game if alls ok
 dfile
-    db 118,"S"-27
+       db 118,"S"-27
 score    
-    db 0,0,0
-    db "H"-27,"S"-27
+       db 0,0,0
+       db "H"-27,"S"-27
 highScore
-    db 28,28,28,118  ; 0, 136 first chr$118 marks the start of DFILE  
-    db $e9   ; screen is compressed using jp (hl) as per dr.beep book
-    ; code in the game creates the screen
+       db 28,28,28,118  ; 
+line1  db 5,0,0,0,0,0,0,0,133,118
+line2  db 118
 
 last     equ $
 end

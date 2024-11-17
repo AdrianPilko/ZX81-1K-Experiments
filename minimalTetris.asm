@@ -628,16 +628,6 @@ score
     db "H"-27,"S"-27
 highScore
     db 28,28,28,118  ; 0, 136 first chr$118 marks the start of DFILE  
-line2
-    db 5,0,0,0,0,0,0,0,5,118
-line3
-    ld  hl,intro_title
-    push hl
-    ld hl, line2
-    ld de, line3
-    ld bc,BOTTOM-2
-    jp $a6e
-   
     db $e9   ; screen is compressed using jp (hl) as per dr.beep book
     ; code in the game creates the screen
 

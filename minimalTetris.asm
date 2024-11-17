@@ -69,7 +69,7 @@ cdflag   db 64
 SHAPE_CHAR_0  equ    128        ; black square
 BLANK_SQUARE  equ    0          ; empty 
 BOTTOM        equ    22         ; bottom row number
-VSYNCLOOP     equ    7         ; used for frame delay loop
+VSYNCLOOP     equ    6         ; used for frame delay loop
 DF_CC         equ    dfile+1
     
 ;; intro screen
@@ -81,12 +81,10 @@ intro_title
     ld bc, 27       ; we have 27 bytes of memory that needs zero'ing from...
     ld de, deleteShapeFlag  ; ...deleteShapeFlag down to waitLoopDropFasterFlag
     lddr
-  
+
     ld a, BLANK_SQUARE
     call fillPlayerArea
 
-;debugEnd 
-;    jp debugEnd
     ld hl, score+2  ;; this is position of score right most digit on screen
     ld b, 3
 setScoreToZero     ; we could have 4 digit score but saving memory on init
@@ -106,6 +104,7 @@ main
     ld (shapeTrackLeftRight),a     
     ld a, 13
     ld (shape_row_index),a    
+
    
 tryAnotherR                             ; generate random number to index shape memory
     ld a, r                             ; we want a number 0 to 4 inclusive 
@@ -324,7 +323,7 @@ incTens
     jr z, incTens
     
     
-    ; move all lives about this down by one
+    ; move all below this down by one
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ld a, (checkColOffsetStartRow)
     ld (copyOfCheckColOffsetStartRow), a
@@ -363,7 +362,7 @@ loopFor_7_Shuffle
 
     ; need to loop until reached top with copy of checkColOffsetStartRow    
     ld a,(copyOfCheckColOffsetStartRow)  
-    cp 21
+    cp BOTTOM-1
     jp nz, playAreaShuffle
  
 checkCompleteLoopInc
@@ -522,18 +521,31 @@ getKey
 fillPlayerArea    ; set a to the character to fill with
      ld b, BOTTOM
      ld hl, dfile+11
-initPlayAreaLoop        
+initPlayAreaLoop    
+      ld (hl),5    
       push bc
       ld b, 7
 initPlayerColLoop
          inc hl
          ld (hl), a
          djnz initPlayerColLoop
-         inc hl        
          inc hl
+         ld (hl), 133        
          inc hl
+         ld (hl), 118   ; end of line character
+         inc hl   
       pop bc
     djnz initPlayAreaLoop
+    ld (hl), 130
+    inc hl
+    ld b, 7
+initPlayAreaLoop2    
+      ld (hl),131    
+      inc hl
+    djnz initPlayAreaLoop2
+    ld (hl), 129
+    inc hl 
+    ld (hl), 118   ; end of line character
     ret
 
 waitForTVSync    ; set b to the delay time which is multiples of the refresh 55 approx 1 second	
@@ -545,44 +557,9 @@ sync1
 	jr z,sync1
 	djnz waitForTVSync
     ret
-; the playing area is a shrunk down ZX81 display. 
-; in addition to the play area we have "out of memory" embeded
-; which, if it crashes on startup we know it's run out, otherwise 
-; that will be overwritten byt he game if alls ok
-dfile
-    db 118,"S"-27
-score    
-    db 0,0,0
-    db "H"-27,"S"-27
-highScore
-    db 28,28,28  ; 0, 136 first chr$118 marks the start of DFILE     
-    db 118,5,136,136,136,136,136,136,136,133  ; 1, play area offset from DF_CC 12 to 18 
-    db 118,5,136,136,136,136,136,136,136,133  ; 2, "" 22 to 28  
-    db 118,5,136,136,136,136,136,136,136,133  ; 3  "" 32 to 38
-    db 118,5,136,136,136,136,136,136,136,133  ; 4     42 to 48  etc
-    db 118,5,136, "O"-27, "U"-27, "T"-27,136, "O"-27, "F"-27,133  ; 5  
-    db 118,5, "M"-27, "E"-27, "M"-27, "O"-27, "R"-27, "Y"-27,136,133  ; 6  
-    db 118,5,136,136,136,136,136,136,136,133  ; 7    ;; all the 136 in here get overriten with the 
-    db 118,5,136,136,136,136,136,136,136,133  ; 8    ;; blank space "0" character, but this was to test 
-    db 118,5,136,136,136,136,136,136,136,133  ; 9    ;; that the screen has blanked fully
-    db 118,5,136,136,136,136,136,136,136,133  ; 10   ;; 
-    db 118,5,136,136,136,136,136,136,136,133  ; 11   ;; if the memory is full then thre game will crash
-    db 118,5,136,136,136,136,136,136,136,133  ; 12   ;; beforte it gets to clear play area  hence the 
-    db 118,5,136,136,136,136,136,136,136,133  ; 13   ;; message no-one should see "OUT OF MEMORY"
-    db 118,5,136,136,136,136,136,136,136,133  ; 14   ;; if the game fits in 1K
-    db 118,5,136,136,136,136,136,136,136,133  ; 15
-    db 118,5,136,136,136,136,136,136,136,133  ; 16
-    db 118,5,136,136,136,136,136,136,136,133  ; 17
-    db 118,5,136,136,136,136,136,136,136,133  ; 18
-    db 118,5,136,136,136,136,136,136,136,133  ; 19
-    db 118,5,136,136,136,136,136,136,136,133  ; 20
-    db 118,5,136,136,136,136,136,136,136,133  ; 21
-    db 118,5,136,136,136,136,136,136,136,133  ; 22
-    db 118,130,131,131,131,131,131,131,131,129; 23
-    db 118                                    ; 24
-vars
-;    db 128          ; becomes end of screen
 
+vars
+    db 118
 currentShape    
     db 0
 shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shape
@@ -638,7 +615,23 @@ displayOuterIncrement
 deleteShapeFlag
     db 0
 zero
-    db 0  
+    db 0 
+
+; the playing area is a shrunk down ZX81 display. 
+; in addition to the play area we have "out of memory" embeded
+; which, if it crashes on startup we know it's run out, otherwise 
+; that will be overwritten byt he game if alls ok
+dfile
+    db 118,"S"-27
+score    
+    db 0,0,0
+    db "H"-27,"S"-27
+highScore
+    db 28,28,28  ; 0, 136 first chr$118 marks the start of DFILE  
+    db 118
+    db $e9   ; screen is compressed using jp (hl) as per dr.beep book
+    ; code in the game creates the screen
+
 last     equ $
 end
 

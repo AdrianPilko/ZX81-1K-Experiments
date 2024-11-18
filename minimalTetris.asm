@@ -1,5 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; assembled size 1053 bytes ;;
+;; assembled size 807 bytes for p file (but screen expands to ((22*11)+20)=262, so 801+262=1063)
+;; size to load has to be < 949, which it is, but max memory is 1024 bytes 
+;; still need to find 1063-1024 = 39 bytes!!
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
 ;;;
@@ -361,11 +363,9 @@ checkIfTopWillBeHit                     ; call if bottom was hit and if this mea
                                         ; check the if the top is reached then game over
     ld a, (shape_row)    
     cp 2                                ; depends on shape so need multiple compares
-    jp z, gameOver
+    jr z, gameOver
     cp 1                                ; depends on shape so need multiple compares
-    jp z, gameOver
-    jp main
-
+    jp nz, main 
     
 gameOver
     ;;; set high score using dr.beeps method
@@ -499,17 +499,13 @@ fillPlayerArea
     ld bc, BOTTOM*LINE_LENGTH
     ld hl, line1  
     ld de, line2
-    ldir           ; replicate the first line down full area
-    ld (hl), 130   ; set the bottom left corner
-    inc hl
-    ld (hl), 131   ; set next to bottom left character in prep for copy accross    
-    ld bc, 7
+    ldir           ; replicate the first line down full area    
+    ld bc, 9
+    ld (hl),131
     ld d, h
     ld e, l
     inc de
     ldir           ; fill bottom row
-    ld (hl), 129   ; set bottom right corner
-    inc hl 
     ld (hl), 118   ; end of line character
     ret
 
@@ -593,7 +589,7 @@ score
        db "H"-27,"S"-27
 highScore
        db 28,28,28,118  ; 
-line1  db 5,0,0,0,0,0,0,0,133,118
+line1  db 8,0,0,0,0,0,0,0,8,118
 line2  db 118
 
 last     equ $

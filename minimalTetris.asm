@@ -117,9 +117,7 @@ tryAnotherR                             ; generate random number to index shape 
 dropLoop                                
     ld a, 1
     ld (deleteShapeFlag),a          ;  drawShape checks this flag to see if is deleting 
-    call drawShape
-    xor a                           ;  xor a is always zero and saves 1 byte compared to ld a, 0
-    ld (deleteShapeFlag),a          ;  clear the flag
+    call drawShapeNoIncRow
 
     call getKey  ; stores value of key in a
     cp 26                  ; O key for left
@@ -406,15 +404,11 @@ endGameFlashArea
 
 
 drawShape  
-    ld a,(deleteShapeFlag)     
-    cp 1
-    jp z, dontIncrementShapeRowIndex    ;; if we're deleting shape then skip increment shape_row_index
-
     ld a, (shape_row_index)
     add a, 10                  ; always need ten as the offset, the left right just adds bit to this   
     ld (shape_row_index), a
 
-dontIncrementShapeRowIndex
+drawShapeNoIncRow
 
     ld a, (currentShapeOffset)
     ld hl, shapes
@@ -500,8 +494,11 @@ drawNothing
     ld a, e
     cp 0  
     jp nz, drawShapeOuter
-
+    
+    xor a
+    ld (deleteShapeFlag),a
     ret    
+
 getKey
     ;; changed to use the method of reading keys that uses the ROM routine $7bd
     ;; then we test for the key number in a. ALso using more standard keys (O, P left right, q will be rotate (further down))

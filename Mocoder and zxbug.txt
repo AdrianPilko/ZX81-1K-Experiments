@@ -2,7 +2,7 @@ ZXbug and mocoder are available from
 https://www.zx81stuff.org.uk/zx81/tape/
 
 ZXBug is a powerfull debugger for zx81 occupies top 4K of RAM from 0x71E0
-Mocider is a really cool tool that compiles basic into machine code
+Mocoder is a really cool tool that compiles basic into machine code
 
 Workflow to load mcoder, load basic program then compile and run then load debugger:
 1) LOAD "MCODER"

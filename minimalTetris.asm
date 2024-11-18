@@ -212,8 +212,7 @@ noShapeMove
     cp 10                  ; Q key for rotate - better on real zx81
     jr z, doRotation
     cp 35                  ; or space key - on zx81 it's not easy to use (better when in emulator)
-    jr z, doRotation
-    jr drawShapeHook    
+    jr nz, drawShapeHook
 doRotation   
     ld a, (rotationCount)
     inc a
@@ -282,7 +281,10 @@ checkLine
     and SHAPE_CHAR_0  
     inc hl
     cp SHAPE_CHAR_0
-    jr nz, setlineNOTComplete
+    jr z, afterSetlineNOTComplete
+    xor a
+    ld (lineCompleteFlag),a
+    
 afterSetlineNOTComplete
     
     ld a, (checkColIndex)
@@ -293,23 +295,9 @@ afterSetlineNOTComplete
 
     ld a, (lineCompleteFlag)
     cp 1
-    jr z,removelineIsComplete
+    jr nz,checkCompleteLoopInc
 
-    jp checkCompleteLoopInc
-    
-setlineNOTComplete
-    xor a
-    ld (lineCompleteFlag),a
-    jp afterSetlineNOTComplete   
-    
-removelineIsComplete          
-    ;ld a,(score_mem_tens)				; add one to score, scoring is binary coded decimal (BCD)
-    ;inc a	
-    ;daa									; z80 daa instruction realigns for BCD after add or subtract  
-    ;ld (score_mem_tens),a				; add one to score, scoring is binary coded decimal (BCD)
-    
 add1ToScore   ; we use the screen memory to store the score to save bytes
-    
     ld hl, dfile+5 ; one position behind score   
     db 17
 incTens
@@ -319,8 +307,7 @@ incTens
     ld a, (hl)
     cp 38      ; check if greater than "9" 
     jr z, incTens
-    
-    
+       
     ; move all below this down by one
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ld a, (checkColOffsetStartRow)

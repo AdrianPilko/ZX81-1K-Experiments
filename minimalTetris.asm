@@ -1,7 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; assembled size 764 bytes for p file (but screen expands to ((22*11)+20)=262, so 764+262=1026)
-;; size to load has to be < 949, which it is, but max memory is 1024 bytes 
-;; still need to find 1026-1024 = 2 bytes!!
+;; p_file_size 750 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262=1026)
+;; size to load has to be < 949, which it is, but max memory is 1024 bytes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
 ;;;

@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; assembled size 771 bytes for p file (but screen expands to ((22*11)+20)=262, so 771+262=1033)
+;; assembled size 764 bytes for p file (but screen expands to ((22*11)+20)=262, so 764+262=1026)
 ;; size to load has to be < 949, which it is, but max memory is 1024 bytes 
-;; still need to find 1033-1024 = 9 bytes!!
+;; still need to find 1026-1024 = 2 bytes!!
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
 ;;;
@@ -316,17 +316,13 @@ playAreaShuffle
     ld hl, DF_CC
     add hl,bc
     ld (lineToSuffleFrom), hl                   ; lineToSuffleFrom is a 16 bit value now the offset 
-                                                ; from start of  screen memory
-    ld hl, (lineRemoved)            
-    ld de, (lineToSuffleFrom)
-    ld b, 7
-loopFor_7_Shuffle           
-    ld a,(de)        
-    ld (hl), a ; load screen position at hl with a    
-    inc hl     ; move position in screen memory we're writing to on one 
-    inc de     ; move the position we're moving from on one
-    djnz loopFor_7_Shuffle     
-
+    
+    ;; copy one line to other to shuffle down
+    ld de, (lineRemoved)            
+    ld hl, (lineToSuffleFrom)
+    ld bc, 7
+    ldir      
+    
     ; need to loop until reached top with copy of checkColOffsetStartRow    
     ld a,(copyOfCheckColOffsetStartRow)  
     cp BOTTOM-1

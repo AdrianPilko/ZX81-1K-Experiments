@@ -318,18 +318,14 @@ playAreaShuffle
     ld (lineToSuffleFrom), hl                   ; lineToSuffleFrom is a 16 bit value now the offset 
                                                 ; from start of  screen memory
     ld hl, (lineRemoved)            
-    ld bc, (lineToSuffleFrom)
-    ld e, 0
+    ld de, (lineToSuffleFrom)
+    ld b, 7
 loopFor_7_Shuffle           
-    ld a,(bc)        
-    ld (hl), a   ;; this instruction crashes!!       ; load screen position at hl with a    
-    inc hl                              ; move position in screen memory we're writing to on one 
-    inc bc                              ; move the position we're moving from on one
-                                    ; loop count down to zero                                        
-    inc e
-    ld a, e
-    cp 7
-    jr nz, loopFor_7_Shuffle     
+    ld a,(de)        
+    ld (hl), a ; load screen position at hl with a    
+    inc hl     ; move position in screen memory we're writing to on one 
+    inc de     ; move the position we're moving from on one
+    djnz loopFor_7_Shuffle     
 
     ; need to loop until reached top with copy of checkColOffsetStartRow    
     ld a,(copyOfCheckColOffsetStartRow)  

@@ -81,7 +81,7 @@ intro_title
     ;; if any varaibles are added or should be initialised to anything but zero then that needs to be
     ;; handled.
     ld hl, zero     ; zero is initialised to zero and never changed in the code!
-    ld bc, 26       ; we have 26 bytes of memory that needs zero'ing from...
+    ld bc, 24       ; we have 24 bytes of memory that needs zero'ing from...
     ld de, deleteShapeFlag  ; ...deleteShapeFlag down to waitLoopDropFasterFlag
     lddr
 
@@ -304,7 +304,8 @@ playAreaShuffle
     ld bc, (copyOfCheckColOffsetStartRow)    	; checkColOffsetStartRow is an offset from DF_CC, 
                                                 ; not address of screen memory
     add hl,bc
-    ld (lineRemoved), hl                        ; lineRemoved is now the 16bit copy of address the 
+    ld d, h   ; store the line to remove in de
+    ld e, l   ; have to copy the registers individually due to no z80 ld de, hl
                                                 ; start of play area for the line romoved    
     ld a, (copyOfCheckColOffsetStartRow)        ; subtract 10 from checkColOffsetStartRow
     sub 10                                      ; this gets us the offset to the previous line...
@@ -318,7 +319,7 @@ playAreaShuffle
     ld (lineToSuffleFrom), hl                   ; lineToSuffleFrom is a 16 bit value now the offset 
     
     ;; copy one line to other to shuffle down
-    ld de, (lineRemoved)            
+    ;; de already contains the line that's to be removed
     ld hl, (lineToSuffleFrom)
     ld bc, 7
     ldir      
@@ -533,8 +534,6 @@ checkRowIndex
     db 0
 checkColIndex
     db 0        
-lineRemoved
-    dw 0
 lineToSuffleFrom
     dw 0
 copyOfCheckColOffsetStartRow

@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; assembled size 807 bytes for p file (but screen expands to ((22*11)+20)=262, so 801+262=1063)
+;; assembled size 788 bytes for p file (but screen expands to ((22*11)+20)=262, so 788+262=1050)
 ;; size to load has to be < 949, which it is, but max memory is 1024 bytes 
-;; still need to find 1063-1024 = 39 bytes!!
+;; still need to find 1050-1024 = 26 bytes!!
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
 ;;;
@@ -276,24 +276,16 @@ checkLoopSetup
     ld (checkColOffsetStartRow), a    
     ld bc, (checkColOffsetStartRow)    
     add hl,bc
-    xor a
-    ld (checkColIndex), a     
+    ld b, 7     
 checkLine        
     ld a, (hl)
-    and SHAPE_CHAR_0  
     inc hl
     cp SHAPE_CHAR_0
-    jr z, afterSetlineNOTComplete
+    jr z, nextLoopCheck
     xor a
     ld (lineCompleteFlag),a
-    
-afterSetlineNOTComplete
-    
-    ld a, (checkColIndex)
-    inc a
-    ld (checkColIndex), a
-    cp 7
-    jr nz, checkLine                ; always complete check loop fully
+nextLoopCheck
+    djnz checkLine                ; always complete check loop fully
 
     ld a, (lineCompleteFlag)
     cp 1

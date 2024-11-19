@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; assembled size 788 bytes for p file (but screen expands to ((22*11)+20)=262, so 788+262=1050)
+;; assembled size 771 bytes for p file (but screen expands to ((22*11)+20)=262, so 771+262=1033)
 ;; size to load has to be < 949, which it is, but max memory is 1024 bytes 
-;; still need to find 1050-1024 = 26 bytes!!
+;; still need to find 1033-1024 = 9 bytes!!
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
 ;;;
@@ -81,7 +81,7 @@ intro_title
     ;; if any varaibles are added or should be initialised to anything but zero then that needs to be
     ;; handled.
     ld hl, zero     ; zero is initialised to zero and never changed in the code!
-    ld bc, 27       ; we have 27 bytes of memory that needs zero'ing from...
+    ld bc, 26       ; we have 26 bytes of memory that needs zero'ing from...
     ld de, deleteShapeFlag  ; ...deleteShapeFlag down to waitLoopDropFasterFlag
     lddr
 
@@ -268,8 +268,6 @@ checkForCompleteLinesInit
     ld a, 1
     ld (checkRowIndex), a               
 checkLoopSetup
-    ld a, 1
-    ld (lineCompleteFlag),a
     ld hl,DF_CC
     ld a, (checkColOffsetStartRow)
     add a, 10
@@ -281,15 +279,9 @@ checkLine
     ld a, (hl)
     inc hl
     cp SHAPE_CHAR_0
-    jr z, nextLoopCheck
-    xor a
-    ld (lineCompleteFlag),a
-nextLoopCheck
-    djnz checkLine                ; always complete check loop fully
-
-    ld a, (lineCompleteFlag)
-    cp 1
-    jr nz,checkCompleteLoopInc
+    jr nz, checkCompleteLoopInc
+    djnz checkLine
+    ;; if we've checked the whole line and not found a gap then line complete
 
 add1ToScore   ; we use the screen memory to store the score to save bytes
     ld hl, dfile+5 ; one position behind score   
@@ -344,7 +336,7 @@ loopFor_7_Shuffle
     cp BOTTOM-1
     jp nz, playAreaShuffle
  
-checkCompleteLoopInc
+checkCompleteLoopInc          ;; check if full play area finished
     ld a, (checkRowIndex)
     inc a
     ld (checkRowIndex), a
@@ -549,8 +541,6 @@ checkRowIndex
     db 0
 checkColIndex
     db 0        
-lineCompleteFlag
-    db 0
 lineRemoved
     dw 0
 lineToSuffleFrom

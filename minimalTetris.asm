@@ -310,17 +310,15 @@ playAreaShuffle
     ld a, (copyOfCheckColOffsetStartRow)        ; subtract 10 from checkColOffsetStartRow
     sub 10                                      ; this gets us the offset to the previous line...
     ld (copyOfCheckColOffsetStartRow),a         ; subtract 10 from checkColOffsetStartRow
-    ld hl, $00                                  ; have to zero this here otherwise left overs in lineToSuffleFrom top 8bits 
-    ld (lineToSuffleFrom), hl
+    ld hl, lineToSuffleFrom+1                    ; have to zero this here otherwise left overs in lineToSuffleFrom top 8bits 
+    ld (hl), 0
     ld (lineToSuffleFrom) , a                   ; ...the line we're shuffling down from 
     ld bc,(lineToSuffleFrom)
     ld hl, DF_CC
     add hl,bc
-    ld (lineToSuffleFrom), hl                   ; lineToSuffleFrom is a 16 bit value now the offset 
-    
     ;; copy one line to other to shuffle down
     ;; de already contains the line that's to be removed
-    ld hl, (lineToSuffleFrom)
+    ;; hl already contains the line to shuffle from
     ld bc, 7
     ldir      
     

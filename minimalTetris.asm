@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; p_file_size 750 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262=1026)
+;; p_file_size 746 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262)
 ;; size to load has to be < 949, which it is, but max memory is 1024 bytes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
@@ -378,10 +378,9 @@ drawShapeNoIncRow
     add hl, de
     ld a, (hl)    
     ld (currentShape), a
-    ; draw shape at next row    
+    ; setup to draw shape at shape_row_index from the start of screen memory    
     ld hl, DF_CC
     ld de, (shape_row_index)            ; add offset to top of screen memory to skip title    
-    ;; this will only draw shape at top need to add current position offset
     add hl, de                          ; to where we want to draw shape
     ld c, %10000000                     ; mask for shape (initialised, but will be rotated  )
 
@@ -389,7 +388,6 @@ drawShapeNoIncRow
     ld a, (rotationCount)
     and %00000001       ;; work out if rotation count is odd or even    
     jr nz, drawHorizLoopCountSetup
-    ld e, 4
     ld a, 2
     ld (innerDrawLoopInit), a
     ld a,10
@@ -398,7 +396,6 @@ drawShapeNoIncRow
     ld (displayOuterIncrement),a 
     jr drawShapeOuter
 drawHorizLoopCountSetup
-    ld e, 2
     ld a, 4         ; drawing horizontally 
     ld (innerDrawLoopInit), a
     ld a,8  

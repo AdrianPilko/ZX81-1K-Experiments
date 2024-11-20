@@ -1,3 +1,3 @@
 #!/bin/sh
-rm -f minimalTetris.p
+rm -f 1K_Tetris.p
 pasmo -v minimalTetris.asm 1K_Tetris.p

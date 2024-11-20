@@ -13,11 +13,11 @@
 ;;; book: The Ulitmate 1K ZX81 coding book
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; TODO  / bugs
-;   1) main aim is to get it below 1K, but really the p file needs to be less than that to load 
+
 ;   2) would be good to be able to rotate shape anti and clockwise - 
 ;   3) when shape next to edge no logic to prevent rotation, so sticks to wall or worse goes through
 ;   4) some shapes can move sideways into others,  incorrectly merging
-;   5) it would make fiting in 1K even harder but the play area should
+;   5) it would make fiting in 1K harder but the play area should
 ;      in "proper" tetris be 10 blocks wide, not 7
 ;   6) in real tetris you get bonus for multiline completion
 
@@ -89,7 +89,6 @@ intro_title
     ld hl, score+2  ;; this is position of score right most digit on screen
     ld b, 3
 setScoreToZero     ; we could have 4 digit score but saving memory on init
-                    ; unrolling the loop and just have 2 digits
     ld (hl),28  ; value of "0" is 28 
     dec hl
     djnz setScoreToZero
@@ -459,7 +458,8 @@ drawNothing
 
 getKey
     ;; changed to use the method of reading keys that uses the ROM routine $7bd
-    ;; then we test for the key number in a. ALso using more standard keys (O, P left right, q will be rotate (further down))
+    ;; then we test for the key number in a. ALso using more standard keys 
+    ;; (O, P left right, q and space are rotate)
     ld bc,(lastk)
     ld a, c
     inc a
@@ -545,10 +545,9 @@ deleteShapeFlag
 zero
     db 0 
 
-; the playing area is a shrunk down ZX81 display. 
-; in addition to the play area we have "out of memory" embeded
-; which, if it crashes on startup we know it's run out, otherwise 
-; that will be overwritten byt he game if alls ok
+; The playing area is a shrunk down ZX81 display. the subroutine fillPlayerArea
+; initialises tghe full screen. This keeps the assembled file to well below 
+; 949 bytes which is the maximum safe to load on an unexpancded ZX81
 dfile
        db 118,"S"-27
 score    

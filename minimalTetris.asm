@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; p_file_size 747 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262)
+;; p_file_size 735 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262)
 ;; size to load has to be < 949, which it is, but max memory is 1024 bytes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
@@ -120,10 +120,10 @@ dropLoop
 
     call getKey  ; stores value of key in a
     cp 26                  ; O key for left
-    jp z, shapeLeft 
+    jr z, shapeLeft 
     cp 25                  ; P 
-    jp z, shapeRight 
-    jp noShapeMove								; dropped through to no move
+    jr z, shapeRight 
+    jr noShapeMove								; dropped through to no move
     
 shapeRight
 
@@ -149,14 +149,14 @@ shapeRight
     ld a, (shapeTrackLeftRight)
     dec a
     cp 1
-    jp z, noShapeMove      
+    jr z, noShapeMove      
     jr incShapeRowThenNoShape
 
 handleShapeRight_StrVert
     ld a, (shapeTrackLeftRight)
     dec a
-    cp 0
-    jp z, noShapeMove      
+    ;;cp 0   no need for cp 0 as zsero flag set by dec a
+    jr z, noShapeMove      
     jr incShapeRowThenNoShape
     
 handleShapeRightForHorizontal
@@ -176,7 +176,7 @@ handleShapeRightForHorizontal
     ld a, (shapeTrackLeftRight)
     dec a
     cp 2
-    jp z, noShapeMove     
+    jr z, noShapeMove     
     jr incShapeRowThenNoShape	
     
 ;handleShapeRight_StrHoriz
@@ -189,7 +189,7 @@ shapeLeft
     ld a, (shapeTrackLeftRight)
     inc a
     cp 8
-    jp z, noShapeMove 
+    jr z, noShapeMove 
     ld (shapeTrackLeftRight),a 
 
     ld a, (shape_row_index)
@@ -251,7 +251,7 @@ preWaitloop
                                     ; more line it would hit the something
     cp 1                            ; if flagForBottomHit is set then this will set zero flag
                                     ; so we need to check if rows are complete first
-    jp z, checkForCompleteLinesInit
+    jr z, checkForCompleteLinesInit
 
     ld a, (shape_row)
     inc a
@@ -323,14 +323,14 @@ playAreaShuffle
     ; need to loop until reached top with copy of checkColOffsetStartRow    
     ld a,(copyOfCheckColOffsetStartRow)  
     cp BOTTOM-1
-    jp nz, playAreaShuffle
+    jr nz, playAreaShuffle
  
 checkCompleteLoopInc          ;; check if full play area finished
     ld a, (checkRowIndex)
     inc a
     ld (checkRowIndex), a
     cp BOTTOM
-    jp nz, checkLoopSetup
+    jr nz, checkLoopSetup
 
 checkIfTopWillBeHit                     ; call if bottom was hit and if this means no space at top
                                         ; check the if the top is reached then game over

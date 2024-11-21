@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; p_file_size 746 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262)
+;; p_file_size 741 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262)
 ;; size to load has to be < 949, which it is, but max memory is 1024 bytes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
@@ -244,7 +244,6 @@ drawShapeHook
     call drawShape
 
 preWaitloop	          
-    ld b, VSYNCLOOP	
     call waitForTVSync	
 
     ld a,(flagForBottomHit)         ; on current shape draw we detected that if the shape dropped one
@@ -480,14 +479,16 @@ fillPlayerArea
     ld (hl), 118   ; end of line character
     ret
 
-waitForTVSync    ; set b to the delay time which is multiples of the refresh 55 approx 1 second	
-    ld a,(frames)
-	ld c,a
-sync1
-	   ld a,(frames)
-	   cp c
-	jr z,sync1
-	djnz waitForTVSync
+
+
+;;;;;;;;;; use dr.beeps method, saves memory
+waitForTVSync
+    ld hl,frames
+	ld a, (hl)
+	sub VSYNCLOOP
+wfr
+    cp (hl)
+	jr nz, wfr
     ret
 
 vars

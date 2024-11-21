@@ -86,9 +86,9 @@ intro_title
 
     call fillPlayerArea
 
-    ld hl, score+2  ;; this is position of score right most digit on screen
-    ld b, 3
-setScoreToZero     ; we could have 4 digit score but saving memory on init
+    ld hl, score+3  ;; this is position of score right most digit on screen
+    ld b, 4         ;; 4 digit score and high score.
+setScoreToZero   
     ld (hl),28  ; value of "0" is 28 
     dec hl
     djnz setScoreToZero
@@ -344,7 +344,7 @@ gameOver
     ;;; set high score using dr.beeps method
     ld hl, score-1
     ld de, highScore-1
-    ld bc, 4
+    ld bc, 5
 scoreSame
     dec c
     inc de
@@ -549,12 +549,11 @@ zero
 ; initialises tghe full screen. This keeps the assembled file to well below 
 ; 949 bytes which is the maximum safe to load on an unexpancded ZX81
 dfile
-       db 118,"S"-27
+       db 118
 score    
-       db 0,0,0
-       db "H"-27,"S"-27
-highScore
-       db 28,28,28,118  ; 
+       db 28,28,28,28,0          ; dr.beep suggested 4 digit score comment on youtube
+highScore                        ; rather than needing the S and HS as it's fairly obvious
+       db 28,28,28,28,118        ; dr.beep suggested 4 digit highscore comment on youtube
 line1  db 8,0,0,0,0,0,0,0,8,118
 line2  db 118
 

@@ -1,10 +1,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; p_file_size 741 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262)
+;; p_file_size 747 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262)
 ;; size to load has to be < 949, which it is, but max memory is 1024 bytes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
 ;;;
-;;; keys: o left, p right, q or space to rotate block
+;;; keys: o left, p right, q rotate clockwise w to rotate block anticlockwise
 ;;;
 ;;; Adrian Pilkington (youtube: ByteForever) 2024
 ;;; reworked tetris16K.asm in an attempt to actually fit in 1K !!
@@ -14,12 +14,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; TODO  / bugs
 
-;   2) would be good to be able to rotate shape anti and clockwise - 
-;   3) when shape next to edge no logic to prevent rotation, so sticks to wall or worse goes through
-;   4) some shapes can move sideways into others,  incorrectly merging
-;   5) it would make fiting in 1K harder but the play area should
+;   1) when shape next to edge no logic to prevent rotation, so sticks to wall or worse goes through
+;   2) some shapes can move sideways into others,  incorrectly merging
+;   3) it would make fiting in 1K harder but the play area should
 ;      in "proper" tetris be 10 blocks wide, not 7
-;   6) in real tetris you get bonus for multiline completion
+;   4) in real tetris you get bonus for multiline completion
 
 ; 12 bytes bytes from $4000 to $400b free reuable for own code
 
@@ -209,11 +208,13 @@ noShapeMove
     ;;; read the rotate shape after the left right is done,
     ;; we draw the shape then next time the delete shape code runs will delete rotated
     call getKey
-    cp 10                  ; Q key for rotate - better on real zx81
-    jr z, doRotation
-    cp 35                  ; or space key - on zx81 it's not easy to use (better when in emulator)
+    cp 10                  ; Q key to rotate clockwise
+    ld b, 1
+    jr z, doRotationLeft
+    cp 11                   ; W key to rotate anticlockwise
+    ld b, 3                 ; causes rotate clockwise by 3, which is equivallent to rotate anticlockwise 
     jr nz, drawShapeHook
-doRotation   
+doRotationLeft
     ld a, (rotationCount)
     inc a
     cp 4
@@ -228,7 +229,7 @@ doRotation
     ld a, (shape_row)
     sub 2
     ld (shape_row),a
-
+    djnz doRotationLeft
     call drawShape
     jr  preWaitloop
 

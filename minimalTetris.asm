@@ -73,7 +73,7 @@ LINE_LENGTH   equ    10
 VSYNCLOOP     equ    6         ; used for frame delay loop
 DF_CC         equ    dfile+1
     
-;; intro screen
+;; game main start point
 intro_title            
     ;; this is to zero all the memory containing the game "variables" we do it from end to start using lddr
     ;; if any varaibles are added or should be initialised to anything but zero then that needs to be
@@ -85,12 +85,13 @@ intro_title
 
     call fillPlayerArea
 
-    ld hl, score+3  ;; this is position of score right most digit on screen
-    ld b, 4         ;; 4 digit score and high score.
+    xor a
+    ld hl, score  ;; this is position of score left digit on screen
 setScoreToZero   
     ld (hl),28  ; value of "0" is 28 
-    dec hl
-    djnz setScoreToZero
+    inc hl
+    cp (hl)
+    jr nz, setScoreToZero
 
 ;; main game loop
 main

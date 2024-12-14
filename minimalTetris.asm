@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; p_file_size 735 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262)
+;; p_file_size 729 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262)
 ;; size to load has to be < 949, which it is, but max memory is 1024 bytes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
@@ -16,10 +16,13 @@
 
 ;   1) when shape next to edge no logic to prevent rotation, so sticks to wall or worse goes through
 ;   2) some shapes can move sideways into others,  incorrectly merging
-;   3) it would make fiting in 1K harder but the play area should
+;   3) it would currently break fiting in 1K, but the play area should
 ;      in "proper" tetris be 10 blocks wide, not 7
-;   4) in real tetris you get bonus for multiline completion
-
+;   4) in real tetris you get bonus for multiline completion - I think 4 lines is called "a tetris"
+;   5) if you press rotate keys (q or w) near bottom it can sometimes cause a restart of the game
+;      I thought this was due to the new rotate anticlockwise but was not it was already a bug
+;
+;
 ; 12 bytes bytes from $4000 to $400b free reuable for own code
 
    org $4009
@@ -214,35 +217,37 @@ noShapeMove
     jr z, doRotationLeft
     cp 11                   ; W key to rotate anticlockwise
     ld b, 3                 ; causes rotate clockwise by 3, which is equivallent to rotate anticlockwise 
-    jr nz, drawShapeHook
-doRotationLeft
-    ld a, (rotationCount)
-    inc a
-    cp 4
-    jr nz, storeIncrementedRotation
+    jr z, doRotationLeft
+    jr justDrawShape        ; no rotate key pressed               
+
+                                        ; partial trace table
+doRotationLeft                          ; rotationCount  currentShapeOffset chosen at random once per drop 
+    ld a, (rotationCount)               ;      0                 0
+    inc a                               ;      1                 6
+    cp 4                                ;      2                 12
+    jr z, doStuffIfRotMax               ;      3                 18
+                                        ;      4->xor a-> 0      sub 18 -> 0                 
+    ld (rotationCount), a               ;;;;;;;;;;;;;;      
+    ld a, (currentShapeOffset)          ;      0                 1
+    add a, 6                            ;      1                 7
+    ld (currentShapeOffset),a           ;      2                 13
+    jr skippedRotMax                    ;      3                 19
+doStuffIfRotMax                         ;      4->xor a->0       sub 18 -> 1            
     xor a
     ld (rotationCount), a
     ; need to subract 18 from shape offset to get back to original rotation
     ld a, (currentShapeOffset)
     sub 18    
     ld (currentShapeOffset),a
+skippedRotMax    
     ;; need to take 2 off shape row when it's rotated, as no longer printing vertically
     ld a, (shape_row)
     sub 2
     ld (shape_row),a
+
     djnz doRotationLeft
-    call drawShape
-    jr  preWaitloop
 
-storeIncrementedRotation    
-    ld (rotationCount), a      
-    ld a, (currentShapeOffset)
-    add a, 6    
-    ld (currentShapeOffset),a
-    call drawShape
-    jr  preWaitloop
-
-drawShapeHook    
+justDrawShape        
     call drawShape
 
 preWaitloop	          
@@ -507,10 +512,10 @@ shapes      ; Shapes are known as Tetromino (see wikipedia), use 8 bits per shap
 
 ; shape definition (bit packed)
 ;        square       L R/L   straight     T L/R   skew L   skew R
-   db %00111100,  %00101011,%10101010,%00011101,%00101101, %00011110   ; should be drawn vertically
-   db %11001100,  %00101110,%00001111,%11100100,%01101100, %11000110   ; should be drawn horiz
-   db %00111100,  %11010100,%10101010,%10111000,%10110100, %00011110   ; should be drawn vertically
-   db %11001100,  %11101000,%00001111,%01001110,%01101100, %11000110   ; should be drawn horiz   
+   db %00111100,  %00101011, %10101010, %00011101, %00101101, %00011110   ; should be drawn vertically
+   db %11001100,  %00101110, %00001111, %11100100, %01101100, %11000110   ; should be drawn horiz
+   db %00111100,  %11010100, %10101010, %10111000, %10110100, %00011110   ; should be drawn vertically
+   db %11001100,  %11101000, %00001111, %01001110, %01101100, %11000110   ; should be drawn horiz   
 
 shape_row_index     ; the current row of the top of the falling shape
     db 0   

@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; p_file_size 729 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262)
+;; p_file_size 725 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262)
 ;; size to load has to be < 949, which it is, but max memory is 1024 bytes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
@@ -82,7 +82,7 @@ intro_title
     ;; if any varaibles are added or should be initialised to anything but zero then that needs to be
     ;; handled.
     ld hl, zero     ; zero is initialised to zero and never changed in the code!
-    ld bc, 24       ; we have 24 bytes of memory that needs zero'ing from...
+    ld bc, 25       ; we have 25 bytes of memory that needs zero'ing from...
     ld de, deleteShapeFlag  ; ...deleteShapeFlag down to waitLoopDropFasterFlag
     lddr
 
@@ -453,9 +453,7 @@ drawNothing
     ld de, (displayOuterIncrement)    
     add hl, de                          ; gets current screen position to next row
     ld de, (outerCount)                 ; retreive  loop count temp
-    dec e   
-    ld a, e
-    cp 0  
+    dec e                               ; dec sets Z so no need for cp  
     jp nz, drawShapeOuter
     
     xor a
@@ -534,8 +532,6 @@ checkColOffsetStartRow
     dw 0
 checkRowIndex
     db 0
-checkColIndex
-    db 0        
 lineToSuffleFrom
     dw 0
 copyOfCheckColOffsetStartRow

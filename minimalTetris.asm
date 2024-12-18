@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; p_file_size 725 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262)
+;; p_file_size 722 bytes (but screen expands to ((22*11)+20)=262, so p_file_size+262)
 ;; size to load has to be < 949, which it is, but max memory is 1024 bytes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tetris clone aiming to fit in 1K for the ZX81
@@ -82,7 +82,7 @@ intro_title
     ;; if any varaibles are added or should be initialised to anything but zero then that needs to be
     ;; handled.
     ld hl, zero     ; zero is initialised to zero and never changed in the code!
-    ld bc, 25       ; we have 25 bytes of memory that needs zero'ing from...
+    ld bc, 23       ; we have 23 bytes of memory that needs zero'ing from...
     ld de, deleteShapeFlag  ; ...deleteShapeFlag down to waitLoopDropFasterFlag
     lddr
 
@@ -434,17 +434,15 @@ drawShapeInner
     ld (flagForBottomHit), a
     
 drawTheDamnSquare    
+    ld (hl), 0      ; this clears the block with space
     ld a,(deleteShapeFlag)     ;; if we're deleting the old shape then don't draw anything
     cp 1
-    jp z, loadBlank   
+    jr z, drawNothing   
     ld (hl), SHAPE_CHAR_0
-    jr drawNothing
     
-loadBlank
-    ld (hl), 0      ; this clears the block with space
 drawNothing
     inc hl
-    xor a
+    xor a                               ; clear flags for rra, looks like not needed as loading a but is required
     ld a, c    
     rra                                 ; rotate mask to right by one bit
     ld c, a

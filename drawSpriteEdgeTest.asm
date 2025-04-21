@@ -62,22 +62,27 @@ gamecodeInit
    ld (spriteLocation), hl
 
 mainLoop
-
    ld b,VSYNCLOOP
 waitForTVSync
    call vsync
    djnz waitForTVSync
 
-   ld hl, spriteData4x4
    ld de, (spriteLocation)
-   ld b, 4
+   ld hl, blankSprite
    ld c, 4
+   ld b, 1
    call drawSprite
 
    ld hl, (spriteLocation)
    ld de, 33
    add hl, de
    ld (spriteLocation), hl
+
+   ld hl, spriteData4x4
+   ld de, (spriteLocation)
+   ld b, 4
+   ld c, 4
+   call drawSprite
 
    jr mainLoop
 
@@ -151,11 +156,19 @@ dfile
 
 vars     db 128          ; becomes end of screen
 
-spriteData4x4       ; these are 16 bytes each 4 by 4)
-   DB $87,$86,$80,$04
-   DB $82,$81,$07,$84
-   DB $05,$84,$04,$07
-   DB $02,$81,$07,$00
+spriteData4x4    
+   DB $87,$07,$84,$04
+   DB $07,$87,$80,$80
+   DB $80,$80,$80,$80
+   DB $02,$80,$80,$01
+
+
+blankSprite      
+   DB $00,$00,$00,$00
+   DB $00,$00,$00,$00
+   DB $00,$00,$00,$00
+   DB $00,$00,$00,$00
+
 
 spriteLocation
    DW  0 

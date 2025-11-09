@@ -23,7 +23,7 @@
 ;      I thought this was due to the new rotate anticlockwise but was not it was already a bug
 ;
 ;
-; 12 bytes bytes from $4000 to $400b free reuable for own code
+; 12 bytes bytes from $4000 to $400b free reusable for own code
 
    org $4009
 
@@ -72,8 +72,8 @@ cdflag   db 64
 SHAPE_CHAR_0  equ    128        ; black square
 BLANK_SQUARE  equ    0          ; empty 
 BOTTOM        equ    22         ; bottom row number
-LINE_LENGTH   equ    10         
-VSYNCLOOP     equ    6         ; used for frame delay loop
+LINE_LENGTH   equ    12         
+VSYNCLOOP     equ    8         ; used for frame delay loop
 DF_CC         equ    dfile+1
     
 ;; game main start point
@@ -103,9 +103,9 @@ main
     ld (rotationCount), a
     inc a     ; a is now 1
     ld (shape_row),a
-    ld a, 5
+    ld a, 6
     ld (shapeTrackLeftRight),a     
-    ld a, 13
+    ld a, 16
     ld (shape_row_index),a    
 
    
@@ -138,7 +138,7 @@ shapeRight
     and %00000001       ;; work out if rotation count is odd or even    
     jr nz, handleShapeRightForHorizontal             ;; if odd then treat as a horizontal shape
 
-    ;; ok so check if shape is straight, if so gets less width. 
+    ;; check if shape is straight, if so gets less width. 
     ;straight shape offsets are 2, 8, 14, 20
     ld a, (currentShapeOffset)    
     cp 2
@@ -164,31 +164,12 @@ handleShapeRight_StrVert
     jr incShapeRowThenNoShape
     
 handleShapeRightForHorizontal
-
-    ;; ok so check if shape is straight, if so gets less width. 
-    ;straight shape offsets are 2, 8, 14, 20
-    ld a, (currentShapeOffset)    
-;    cp 2
-;    jp z, handleShapeRight_StrHoriz
-;    cp 8
-;    jp z, handleShapeRight_StrHoriz
-;    cp 14
-;    jp z, handleShapeRight_StrHoriz
-;    cp 20
-;    jr z, handleShapeRight_StrHoriz
-
     ld a, (shapeTrackLeftRight)
     dec a
     cp 2
     jr z, noShapeMove     
     jr incShapeRowThenNoShape	
     
-;handleShapeRight_StrHoriz
-;    ld a, (shapeTrackLeftRight)
-;    dec a
-;    cp 3
-;    jp z, noShapeMove     
-;    jr incShapeRowThenNoShape
 shapeLeft
     ld a, (shapeTrackLeftRight)
     inc a
@@ -274,11 +255,11 @@ checkForCompleteLinesInit
 checkLoopSetup
     ld hl,DF_CC
     ld a, (checkColOffsetStartRow)
-    add a, 10
+    add a, LINE_LENGTH
     ld (checkColOffsetStartRow), a    
     ld bc, (checkColOffsetStartRow)    
     add hl,bc
-    ld b, 7     
+    ld b, 9     
 checkLine        
     ld a, (hl)
     inc hl
@@ -288,7 +269,7 @@ checkLine
     ;; if we've checked the whole line and not found a gap then line complete
 
 add1ToScore   ; we use the screen memory to store the score to save bytes
-    ld hl, dfile+5 ; one position behind score   
+    ld hl, dfile+6 ; one position behind score   
     db 17
 incTens
     ld (hl), 28
@@ -371,7 +352,7 @@ endGameFlashArea
 
 drawShape  
     ld a, (shape_row_index)
-    add a, 10                  ; always need ten as the offset, the left right just adds bit to this   
+    add a, LINE_LENGTH                 ; always need ten as the offset, the left right just adds bit to this   
     ld (shape_row_index), a
 
 drawShapeNoIncRow
@@ -395,7 +376,7 @@ drawShapeNoIncRow
     jr nz, drawHorizLoopCountSetup
     ld a, 2
     ld (innerDrawLoopInit), a
-    ld a,10
+    ld a,LINE_LENGTH
     ld (displayLineIncrement), a
     sub 2
     ld (displayOuterIncrement),a 
@@ -403,7 +384,7 @@ drawShapeNoIncRow
 drawHorizLoopCountSetup
     ld a, 4         ; drawing horizontally 
     ld (innerDrawLoopInit), a
-    ld a,8  
+    ld a, 10  
     ld (displayLineIncrement), a
     sub 2
     ld (displayOuterIncrement),a 
@@ -473,7 +454,7 @@ fillPlayerArea
     ld hl, line1  
     ld de, line2
     ldir           ; replicate the first line down full area    
-    ld bc, 9
+    ld bc, 11
     ld (hl),131
     ld d, h
     ld e, l
@@ -553,10 +534,10 @@ zero
 dfile
        db 118
 score    
-       db 28,28,28,28,0          ; dr.beep suggested 4 digit score comment on youtube
+       db 28,28,28,28,28,0          ; dr.beep suggested 4 digit score comment on youtube
 highScore                        ; rather than needing the S and HS as it's fairly obvious
-       db 28,28,28,28,118        ; dr.beep suggested 4 digit highscore comment on youtube
-line1  db 8,0,0,0,0,0,0,0,8,118
+       db 28,28,28,28,28,118        ; dr.beep suggested 4 digit highscore comment on youtube
+line1  db 8,0,0,0,0,0,0,0,0,0,8,118
 line2  db 118
 
 last     equ $

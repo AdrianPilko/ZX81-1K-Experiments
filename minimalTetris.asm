@@ -173,7 +173,7 @@ handleShapeRightForHorizontal
 shapeLeft
     ld a, (shapeTrackLeftRight)
     inc a
-    cp 8
+    cp 10 ; changed for new width 
     jr z, noShapeMove 
     ld (shapeTrackLeftRight),a 
 
